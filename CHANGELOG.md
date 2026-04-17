@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-17
+
 ### Changed
 - Rewrote MCP tool definitions for 134 of 143 tools to raise Glama Tool Definition Quality Score (TDQS). Pass 1 covered the 23 tools scoring ≤2.5; pass 2 covered the ~111 tools scoring 2.6–3.4. Only the 9 A-tier tools (≥3.5) were left untouched. Every rewritten tool now includes purpose context, usage guidance (with irreversibility warnings and pointers to safer alternatives for destructive ops), behavioural transparency (return value, cascading effects), and richer parameter semantics (how to obtain each ID, valid enum values, omission behaviour, constraints). Average `description` length went from ~30 chars to ~241 chars; target server grade uplift from C (2.8) to A under Glama's 60%-mean + 40%-min formula. Tool count, names, parameter names/types, and required/optional splits were preserved.
 - Bumped `reqwest` from 0.12 to 0.13 (feature flag `rustls-tls` renamed to `rustls`; no code changes required).
@@ -31,4 +33,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.6.7...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.6.7...v0.7.0
