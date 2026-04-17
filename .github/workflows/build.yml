@@ -102,7 +102,18 @@ jobs:
       - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish || echo "crates.io publish skipped (version may already exist)"
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Skip if this version is already on crates.io. Otherwise publish
+          # and fail hard on any real error (the previous `|| echo skipped`
+          # pattern masked a dirty-workdir failure for v0.7.0).
+          # --allow-dirty is required because release artifacts are present
+          # in the workspace at this point in the job.
+          if curl -sf "https://crates.io/api/v1/crates/clickup-cli/${VERSION}" >/dev/null; then
+            echo "::notice::crates.io: version ${VERSION} already exists, skipping"
+          else
+            cargo publish --allow-dirty
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -117,7 +128,11 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           cd npm
           npm version "${VERSION}" --no-git-tag-version --allow-same-version
-          npm publish --access public || echo "npm publish skipped (version may already exist)"
+          if npm view "@nick.bester/clickup-cli@${VERSION}" version >/dev/null 2>&1; then
+            echo "::notice::npm: version ${VERSION} already exists, skipping"
+          else
+            npm publish --access public
+          fi
 
       - name: Setup Node.js (GitHub Packages)
         uses: actions/setup-node@v4
@@ -135,7 +150,11 @@ jobs:
           # Temporarily change scope for GitHub Packages
           node -e "const p=require('./package.json'); p.name='@nicholasbester/clickup-cli'; require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2)+'\n')"
           npm version "${VERSION}" --no-git-tag-version --allow-same-version
-          npm publish --access public || echo "GitHub Packages publish skipped (version may already exist)"
+          if npm view "@nicholasbester/clickup-cli@${VERSION}" version --registry https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "::notice::GitHub Packages: version ${VERSION} already exists, skipping"
+          else
+            npm publish --access public
+          fi
 
       - name: Update Homebrew formula
         env:
