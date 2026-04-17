@@ -11,9 +11,9 @@
   gtag('config', 'G-EFVR97CCN6');
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ page.title }} — clickup-cli</title>
-<meta name="description" content="{{ site.description }}">
+<meta name="theme-color" content="#2A9D8F">
 <link rel="icon" type="image/svg+xml" href="{{ '/assets/clickup-cli-logo.svg' | relative_url }}">
+{% seo %}
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Outfit:wght@200;300;400;500;600;700&family=Caveat:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 {% raw %}<style>
 :root, [data-theme="light"] {
@@ -185,9 +185,9 @@ blockquote { border-left:3px solid var(--amber); padding-left:16px; margin:16px 
 
   <p class="nav-group">Documentation</p>
   <a href="{{ '/' | relative_url }}" {% if page.url == '/' or page.url == '/index.html' %}class="active"{% endif %}>Home</a>
-  <a href="{{ '/install' | relative_url }}" {% if page.url contains 'install' %}class="active"{% endif %}>Installation</a>
-  <a href="{{ '/commands' | relative_url }}" {% if page.url contains 'commands' %}class="active"{% endif %}>Commands</a>
-  <a href="{{ '/mcp' | relative_url }}" {% if page.url contains 'mcp' %}class="active"{% endif %}>MCP Server</a>
+  <a href="{{ '/install/' | relative_url }}" {% if page.url contains 'install' %}class="active"{% endif %}>Installation</a>
+  <a href="{{ '/commands/' | relative_url }}" {% if page.url contains 'commands' %}class="active"{% endif %}>Commands</a>
+  <a href="{{ '/mcp/' | relative_url }}" {% if page.url contains 'mcp' %}class="active"{% endif %}>MCP Server</a>
 
   <p class="nav-group">Links</p>
   <a href="https://github.com/nicholasbester/clickup-cli" target="_blank">GitHub ↗</a>
@@ -211,6 +211,7 @@ blockquote { border-left:3px solid var(--amber); padding-left:16px; margin:16px 
     <img src="{{ '/assets/clickup-cli-logo.svg' | relative_url }}" alt="clickup-cli" width="56" height="64" style="margin-bottom:12px">
     <p style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--deep);">Token-efficient ClickUp for <em style="color:var(--amber);font-style:italic">every</em> AI agent.</p>
     <p class="footer-copy">clickup-cli · Apache-2.0 · 2026</p>
+    <p style="font-size:9px;font-weight:300;letter-spacing:2px;color:var(--txm);margin-top:10px;text-transform:uppercase;">Made by D3 Vitamin</p>
   </div>
 </div>
 

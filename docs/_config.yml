@@ -1,7 +1,34 @@
 title: clickup-cli
-description: CLI for the ClickUp API, optimized for AI agents
+description: A token-efficient CLI and MCP server for the ClickUp API. Covers ~130 endpoints across 28 resource groups and exposes 143 MCP tools, with output ~98% smaller than raw JSON. Works with any AI agent — Claude, ChatGPT, Cursor, Copilot.
 baseurl: ""
 url: https://clickup-cli.com
+lang: en
+
+author:
+  name: Nick Bester
+  email: nick@odinside.tech
+
+logo: /assets/clickup-cli-logo.svg
+
+social:
+  name: clickup-cli
+  links:
+    - https://github.com/nicholasbester/clickup-cli
+    - https://crates.io/crates/clickup-cli
+    - https://www.npmjs.com/package/@nick.bester/clickup-cli
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      image: /assets/og-image.png
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
 
 exclude:
   - superpowers/
+  - Gemfile
+  - Gemfile.lock
+  - vendor/

@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Installation
+description: Install clickup-cli via npm, Homebrew, Cargo, Docker, or prebuilt binaries. Works on macOS, Linux, and Windows.
+permalink: /install/
 ---
 
 # Installation

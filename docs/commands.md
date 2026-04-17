@@ -1,6 +1,8 @@
 ---
 layout: default
 title: Command Reference
+description: Complete reference for every clickup-cli command — workspace, task, list, folder, time tracking, docs, chat, webhooks, and more. Covers ~130 ClickUp API endpoints.
+permalink: /commands/
 ---
 
 # Command Reference

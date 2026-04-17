@@ -1,6 +1,8 @@
 ---
 layout: default
 title: MCP Server
+description: Built-in Model Context Protocol (MCP) server with 143 tools covering 100% of the ClickUp API. Connect Claude Desktop, Cursor, and any MCP-compatible client.
+permalink: /mcp/
 ---
 
 # MCP Server

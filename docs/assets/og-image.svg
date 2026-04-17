@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FBE8B3"/>
+      <stop offset="0.35" stop-color="#FFF8ED"/>
+      <stop offset="0.7" stop-color="#B8E4E6"/>
+      <stop offset="1" stop-color="#F5E6D0"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0.25" cy="0.75" r="0.5">
+      <stop offset="0" stop-color="#2A9D8F" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#2A9D8F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.8" cy="0.2" r="0.45">
+      <stop offset="0" stop-color="#E8A838" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#E8A838" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="stripe" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#E8A838"/>
+      <stop offset="0.5" stop-color="#2A9D8F"/>
+      <stop offset="1" stop-color="#6EC6C8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow1)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+  <rect y="0" width="1200" height="6" fill="url(#stripe)"/>
+
+  <text x="80" y="130" font-family="Outfit, -apple-system, sans-serif" font-size="18" font-weight="500" letter-spacing="6" fill="#2A9D8F" text-transform="uppercase">∞ · ELEMENT CU</text>
+
+  <text x="80" y="280" font-family="Cormorant Garamond, Georgia, serif" font-size="140" font-weight="300" fill="#1A6B60">clickup <tspan font-style="italic" fill="#E8A838">cli</tspan></text>
+
+  <text x="80" y="360" font-family="Cormorant Garamond, Georgia, serif" font-size="38" font-weight="400" fill="#2C3E3A">Token-efficient ClickUp for <tspan font-style="italic" fill="#E8A838">every</tspan> AI agent.</text>
+
+  <g transform="translate(80, 440)">
+    <rect x="0" y="0" width="280" height="90" rx="12" fill="#FFFCF7" stroke="rgba(42,157,143,0.15)" stroke-width="1"/>
+    <text x="20" y="32" font-family="Outfit, sans-serif" font-size="11" font-weight="600" letter-spacing="2" fill="#1A6B60" text-transform="uppercase">MCP Tools</text>
+    <text x="20" y="74" font-family="Cormorant Garamond, Georgia, serif" font-size="44" font-weight="400" fill="#E8A838">143</text>
+  </g>
+
+  <g transform="translate(380, 440)">
+    <rect x="0" y="0" width="280" height="90" rx="12" fill="#FFFCF7" stroke="rgba(42,157,143,0.15)" stroke-width="1"/>
+    <text x="20" y="32" font-family="Outfit, sans-serif" font-size="11" font-weight="600" letter-spacing="2" fill="#1A6B60" text-transform="uppercase">Endpoints</text>
+    <text x="20" y="74" font-family="Cormorant Garamond, Georgia, serif" font-size="44" font-weight="400" fill="#E8A838">~130</text>
+  </g>
+
+  <g transform="translate(680, 440)">
+    <rect x="0" y="0" width="280" height="90" rx="12" fill="#FFFCF7" stroke="rgba(42,157,143,0.15)" stroke-width="1"/>
+    <text x="20" y="32" font-family="Outfit, sans-serif" font-size="11" font-weight="600" letter-spacing="2" fill="#1A6B60" text-transform="uppercase">Token Reduction</text>
+    <text x="20" y="74" font-family="Cormorant Garamond, Georgia, serif" font-size="44" font-weight="400" fill="#E8A838">~98%</text>
+  </g>
+
+  <g transform="translate(960, 100)">
+    <circle cx="100" cy="140" r="95" fill="#1A6B60" opacity="0.08"/>
+    <circle cx="100" cy="140" r="78" fill="#E8A838" opacity="0.12"/>
+    <text x="100" y="160" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-size="110" font-weight="300" fill="#1A6B60" font-style="italic">Cu</text>
+    <text x="100" y="235" text-anchor="middle" font-family="Outfit, sans-serif" font-size="11" font-weight="600" letter-spacing="3" fill="#5A7A72" text-transform="uppercase">29</text>
+  </g>
+
+  <text x="80" y="580" font-family="Outfit, sans-serif" font-size="14" font-weight="400" letter-spacing="3" fill="#5A7A72">clickup-cli.com · github.com/nicholasbester/clickup-cli</text>
+</svg>
