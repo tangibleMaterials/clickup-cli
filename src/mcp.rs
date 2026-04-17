@@ -46,121 +46,121 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_space_list",
-            "description": "List spaces in a workspace",
+            "description": "List all spaces in a ClickUp workspace. Spaces are the top-level containers below the workspace and hold folders, lists, and tasks. Returns a compact array of space objects (id, name, private, archived). Use clickup_folder_list or clickup_list_list with a space_id to drill down.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "archived": {"type": "boolean", "description": "Include archived spaces"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config (defaults.workspace_id)."},
+                    "archived": {"type": "boolean", "description": "true = include archived spaces in the result; false or omitted = only active spaces. Defaults to false."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_folder_list",
-            "description": "List folders in a space",
+            "description": "List all folders in a ClickUp space. Folders are optional groupings that contain lists; a space may also have folderless lists (use clickup_list_list with space_id for those). Returns a compact array of folder objects (id, name, task_count, archived).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"},
-                    "archived": {"type": "boolean", "description": "Include archived folders"}
+                    "space_id": {"type": "string", "description": "ID of the parent space. Obtain from clickup_space_list (field: id)."},
+                    "archived": {"type": "boolean", "description": "true = include archived folders; false or omitted = only active folders. Defaults to false."}
                 },
                 "required": ["space_id"]
             }
         },
         {
             "name": "clickup_list_list",
-            "description": "List ClickUp lists in a folder or space (folderless lists)",
+            "description": "List ClickUp lists under either a folder or a space (folderless lists). Exactly one of folder_id or space_id must be provided. Returns a compact array of list objects (id, name, task_count, archived). Use clickup_task_list to drill into a specific list.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "folder_id": {"type": "string", "description": "Folder ID (mutually exclusive with space_id)"},
-                    "space_id": {"type": "string", "description": "Space ID for folderless lists (mutually exclusive with folder_id)"},
-                    "archived": {"type": "boolean", "description": "Include archived lists"}
+                    "folder_id": {"type": "string", "description": "ID of the parent folder. Obtain from clickup_folder_list (field: id). Mutually exclusive with space_id."},
+                    "space_id": {"type": "string", "description": "ID of a space — returns only the folderless lists attached directly to the space. Obtain from clickup_space_list (field: id). Mutually exclusive with folder_id."},
+                    "archived": {"type": "boolean", "description": "true = include archived lists; false or omitted = only active lists. Defaults to false."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_task_list",
-            "description": "List tasks in a ClickUp list",
+            "description": "List tasks in a specific ClickUp list with optional status/assignee filters. Returns the first page of task objects in compact form (id, name, status, assignees, due_date). For cross-list or cross-space queries use clickup_task_search instead; for a single task use clickup_task_get.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"},
+                    "list_id": {"type": "string", "description": "ID of the list to read tasks from. Obtain from clickup_list_list (field: id)."},
                     "statuses": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by status names"
+                        "description": "Status names to include (e.g. ['open','in progress']). Case-sensitive, must match a status defined on the list. Omit to return tasks in any open status."
                     },
                     "assignees": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by assignee user IDs"
+                        "description": "User IDs (as strings) to filter assignees. Obtain from clickup_member_list or clickup_user_get. Omit to return tasks regardless of assignee."
                     },
-                    "include_closed": {"type": "boolean", "description": "Include closed tasks"}
+                    "include_closed": {"type": "boolean", "description": "true = include tasks whose status is in the 'closed' group; false or omitted = exclude closed tasks from the response."}
                 },
                 "required": ["list_id"]
             }
         },
         {
             "name": "clickup_task_get",
-            "description": "Get details of a specific ClickUp task",
+            "description": "Fetch the full object for a single ClickUp task — name, description, status, assignees, tags, custom fields, checklists, due date, time estimates, dependencies, and more. Returns the task object. Use clickup_task_list or clickup_task_search to find a task_id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "include_subtasks": {"type": "boolean", "description": "Include subtasks in the response"}
+                    "task_id": {"type": "string", "description": "ID of the task to fetch. Obtain from clickup_task_list (field: id) or clickup_task_search."},
+                    "include_subtasks": {"type": "boolean", "description": "true = include the task's subtasks in the response under the 'subtasks' field; false or omitted = return only the parent task."}
                 },
                 "required": ["task_id"]
             }
         },
         {
             "name": "clickup_task_create",
-            "description": "Create a new task in a ClickUp list",
+            "description": "Create a new task in a ClickUp list. The task starts in the list's default status unless 'status' is supplied. Returns the created task object including its new id, which you can pass to clickup_task_update, clickup_task_get, etc.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID to create the task in"},
-                    "name": {"type": "string", "description": "Task name"},
-                    "description": {"type": "string", "description": "Task description (markdown supported)"},
-                    "status": {"type": "string", "description": "Task status"},
-                    "priority": {"type": "integer", "description": "Priority (1=urgent, 2=high, 3=normal, 4=low)"},
+                    "list_id": {"type": "string", "description": "ID of the list the task will live in. Obtain from clickup_list_list (field: id)."},
+                    "name": {"type": "string", "description": "Task title shown in the list view. Required and non-empty."},
+                    "description": {"type": "string", "description": "Task body. Markdown supported (headings, links, checkboxes, @mentions). Omit to create the task with no description."},
+                    "status": {"type": "string", "description": "Status name to start in (case-sensitive; must match a status configured on the list). Omit to use the list's default initial status."},
+                    "priority": {"type": "integer", "description": "Task priority: 1=Urgent, 2=High, 3=Normal, 4=Low. Omit for no priority."},
                     "assignees": {
                         "type": "array",
                         "items": {"type": "integer"},
-                        "description": "List of assignee user IDs"
+                        "description": "User IDs to assign to the task. Obtain from clickup_member_list or clickup_user_get. Omit for an unassigned task."
                     },
                     "tags": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of tag names"
+                        "description": "Tag names to apply. Tags must already exist in the parent space (use clickup_tag_list to see available tags or clickup_tag_create to add new ones)."
                     },
-                    "due_date": {"type": "integer", "description": "Due date as Unix timestamp (milliseconds)"}
+                    "due_date": {"type": "integer", "description": "Due date as a Unix timestamp in milliseconds (e.g. 1735689600000 for 2025-01-01). Omit for no due date."}
                 },
                 "required": ["list_id", "name"]
             }
         },
         {
             "name": "clickup_task_update",
-            "description": "Update an existing ClickUp task",
+            "description": "Update fields on an existing ClickUp task — name, description, status, priority, and incrementally add/remove assignees. Only provided fields are changed; omitted fields keep their current value. For tags use clickup_task_add_tag/remove_tag; for moving between lists use clickup_task_move. Returns the updated task object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "name": {"type": "string", "description": "New task name"},
-                    "status": {"type": "string", "description": "New status"},
-                    "priority": {"type": "integer", "description": "New priority (1=urgent, 2=high, 3=normal, 4=low)"},
-                    "description": {"type": "string", "description": "New description"},
+                    "task_id": {"type": "string", "description": "ID of the task to update. Obtain from clickup_task_list (field: id) or clickup_task_search."},
+                    "name": {"type": "string", "description": "New task title. Omit to keep current name."},
+                    "status": {"type": "string", "description": "New status name (case-sensitive, must match a status defined on the parent list). Omit to keep current status."},
+                    "priority": {"type": "integer", "description": "New priority: 1=Urgent, 2=High, 3=Normal, 4=Low. Omit to keep current priority."},
+                    "description": {"type": "string", "description": "New task body — replaces the current description entirely. Markdown supported. Omit to keep current description."},
                     "add_assignees": {
                         "type": "array",
                         "items": {"type": "integer"},
-                        "description": "User IDs to add as assignees"
+                        "description": "User IDs to add as assignees (additive; does not replace existing assignees). Obtain from clickup_member_list."
                     },
                     "rem_assignees": {
                         "type": "array",
                         "items": {"type": "integer"},
-                        "description": "User IDs to remove from assignees"
+                        "description": "User IDs to remove from assignees (no-op if the user is not currently assigned)."
                     }
                 },
                 "required": ["task_id"]
@@ -168,41 +168,41 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_task_delete",
-            "description": "Delete a ClickUp task",
+            "description": "Permanently delete a ClickUp task along with all its subtasks, comments, checklists, attachments, and time entries. Destructive, irreversible, and cascading — confirm with the user before calling. To mark a task done without deleting, use clickup_task_update with a 'closed' status instead. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"}
+                    "task_id": {"type": "string", "description": "ID of the task to delete. Obtain from clickup_task_list (field: id) or clickup_task_search. All subtasks, comments, checklists, attachments, and time entries on this task are deleted with it."}
                 },
                 "required": ["task_id"]
             }
         },
         {
             "name": "clickup_task_search",
-            "description": "Search tasks across a workspace with optional filters",
+            "description": "Search tasks across an entire ClickUp workspace with optional space/list/status/assignee filters — useful for cross-list queries. Returns a paginated array of task objects. For tasks in a single list, prefer clickup_task_list (fewer parameters, same shape).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
+                    "team_id": {"type": "string", "description": "Workspace (team) ID to search within. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
                     "space_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by space IDs"
+                        "description": "Restrict results to these space IDs. Obtain from clickup_space_list (field: id). Omit to search all spaces."
                     },
                     "list_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by list IDs"
+                        "description": "Restrict results to these list IDs. Obtain from clickup_list_list (field: id). Omit to search all lists."
                     },
                     "statuses": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by status names"
+                        "description": "Status names to include (e.g. ['open','in review']). Case-sensitive. Omit for any open status."
                     },
                     "assignees": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by assignee user IDs"
+                        "description": "User IDs (as strings) to restrict to tasks assigned to them. Obtain from clickup_member_list. Omit to return tasks regardless of assignee."
                     }
                 },
                 "required": []
@@ -210,63 +210,63 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_comment_list",
-            "description": "List comments on a ClickUp task",
+            "description": "List comments on a ClickUp task in chronological order (oldest first). Only top-level comments are returned; use clickup_comment_replies to fetch a threaded reply chain. Returns a compact array of comment objects (id, comment_text, user, resolved, date).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"}
+                    "task_id": {"type": "string", "description": "ID of the task to read comments from. Obtain from clickup_task_list (field: id) or clickup_task_search."}
                 },
                 "required": ["task_id"]
             }
         },
         {
             "name": "clickup_comment_create",
-            "description": "Create a comment on a ClickUp task",
+            "description": "Post a new top-level comment on a ClickUp task. Supports markdown and @mentions in the text body. Returns the created comment object including its new id, which you can pass to clickup_comment_reply, clickup_comment_update, etc.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "text": {"type": "string", "description": "Comment text"},
-                    "assignee": {"type": "integer", "description": "Assign the comment to a user ID"},
-                    "notify_all": {"type": "boolean", "description": "Notify all assignees"}
+                    "task_id": {"type": "string", "description": "ID of the task to comment on. Obtain from clickup_task_list (field: id) or clickup_task_search."},
+                    "text": {"type": "string", "description": "Comment body. Markdown and @mentions (e.g. '@username') are supported."},
+                    "assignee": {"type": "integer", "description": "Optional user ID to assign the comment to — they will receive a notification. Obtain from clickup_member_list."},
+                    "notify_all": {"type": "boolean", "description": "true = send a notification to every assignee of the task; false or omitted = only notify people mentioned or the explicit assignee."}
                 },
                 "required": ["task_id", "text"]
             }
         },
         {
             "name": "clickup_field_list",
-            "description": "List custom fields for a ClickUp list",
+            "description": "List the custom field definitions available on a ClickUp list — field id, name, type (text, number, dropdown, labels, date, url, email, phone, money, progress, formula, etc.), and for dropdown/labels fields the permitted option values. Use this before clickup_field_set to learn the correct field_id and value shape. Returns an array of custom field definitions.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"}
+                    "list_id": {"type": "string", "description": "ID of the list whose custom fields to enumerate. Obtain from clickup_list_list (field: id). Fields are defined per-list (or inherited from folder/space)."}
                 },
                 "required": ["list_id"]
             }
         },
         {
             "name": "clickup_field_set",
-            "description": "Set a custom field value on a ClickUp task",
+            "description": "Set or overwrite a single custom field value on a ClickUp task. The value's JSON shape must match the field type (string for text/url/email, number for number/currency/progress, array of option ids for dropdown/labels, Unix ms for date, etc.). Use clickup_field_list first to see the field type and option ids. Use clickup_field_unset to clear a value. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "field_id": {"type": "string", "description": "Custom field ID"},
-                    "value": {"description": "Value to set (type depends on the custom field type)"}
+                    "task_id": {"type": "string", "description": "ID of the task whose field value should change. Obtain from clickup_task_list (field: id)."},
+                    "field_id": {"type": "string", "description": "ID of the custom field to set. Obtain from clickup_field_list (field: id) or clickup_task_get (custom_fields[].id)."},
+                    "value": {"description": "New value; the accepted type depends on the custom field type. Examples: 'hello' (text), 42 (number), ['option-uuid'] (dropdown), 1735689600000 (date as Unix ms). See clickup_field_list for the field's type."}
                 },
                 "required": ["task_id", "field_id", "value"]
             }
         },
         {
             "name": "clickup_time_start",
-            "description": "Start a time tracking entry for a task",
+            "description": "Start a live time-tracking timer for the authenticated user. If a timer is already running it will be stopped first. Pair with clickup_time_stop to end the timer and record the entry. Use clickup_time_current to inspect the running timer. Returns the newly started time entry object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "task_id": {"type": "string", "description": "Task ID to track time against"},
-                    "description": {"type": "string", "description": "Description of the time entry"},
-                    "billable": {"type": "boolean", "description": "Whether this entry is billable"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "task_id": {"type": "string", "description": "ID of the task to attribute this timer to. Obtain from clickup_task_list (field: id). Omit to track time without a task."},
+                    "description": {"type": "string", "description": "Free-text description shown on the time entry (e.g. 'pair debugging session'). Optional."},
+                    "billable": {"type": "boolean", "description": "true = mark this time entry as billable (shows as $ in reports); false or omitted = non-billable."}
                 },
                 "required": []
             }
@@ -284,77 +284,77 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_time_list",
-            "description": "List time tracking entries for a workspace",
+            "description": "List historical time tracking entries for a workspace, optionally filtered by date range and/or task. Covers both manually-created entries and stopped timers. Returns a compact array of time entry objects (id, user, task, start, duration, billable, description).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "start_date": {"type": "integer", "description": "Start date as Unix timestamp (milliseconds)"},
-                    "end_date": {"type": "integer", "description": "End date as Unix timestamp (milliseconds)"},
-                    "task_id": {"type": "string", "description": "Filter by task ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "start_date": {"type": "integer", "description": "Inclusive lower bound as a Unix timestamp in milliseconds (e.g. 1735689600000 for 2025-01-01). Omit for no lower bound."},
+                    "end_date": {"type": "integer", "description": "Inclusive upper bound as a Unix timestamp in milliseconds. Omit for no upper bound. Note: ClickUp caps the range to ~30 days by default."},
+                    "task_id": {"type": "string", "description": "Return only entries attributed to this task. Obtain from clickup_task_list (field: id). Omit to list entries across all tasks."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_checklist_create",
-            "description": "Create a checklist on a ClickUp task",
+            "description": "Create a new checklist (to-do group) on a ClickUp task. The checklist starts empty — add items via clickup_checklist_add_item. A task can have multiple checklists. Returns the created checklist object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "name": {"type": "string", "description": "Checklist name"}
+                    "task_id": {"type": "string", "description": "ID of the task to attach the checklist to. Obtain from clickup_task_list (field: id)."},
+                    "name": {"type": "string", "description": "Display name for the checklist (e.g. 'Launch prep', 'QA steps'). Shown as a heading above the items."}
                 },
                 "required": ["task_id", "name"]
             }
         },
         {
             "name": "clickup_checklist_delete",
-            "description": "Delete a checklist from a ClickUp task",
+            "description": "Permanently delete an entire checklist from a ClickUp task, including all its items. Destructive and irreversible. To remove a single item instead, use clickup_checklist_delete_item. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "checklist_id": {"type": "string", "description": "Checklist ID"}
+                    "checklist_id": {"type": "string", "description": "ID of the checklist to delete. Obtain from clickup_task_get (field: checklists[].id). All items on this checklist are deleted with it."}
                 },
                 "required": ["checklist_id"]
             }
         },
         {
             "name": "clickup_goal_list",
-            "description": "List goals in a workspace",
+            "description": "List all ClickUp goals in a workspace. Each goal represents an OKR-style objective and can have multiple key results (sub-targets). Returns a compact array of goal objects (id, name, percent_completed, due_date). Use clickup_goal_get for the full goal including its key_results.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_goal_get",
-            "description": "Get details of a specific goal",
+            "description": "Fetch a single ClickUp goal including its key results, owners, due date, and current percent-complete. Returns the goal object with its key_results array populated.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "goal_id": {"type": "string", "description": "Goal ID"}
+                    "goal_id": {"type": "string", "description": "ID of the goal to fetch. Obtain from clickup_goal_list (field: id). The authenticated user must have view access to the goal's workspace."}
                 },
                 "required": ["goal_id"]
             }
         },
         {
             "name": "clickup_goal_create",
-            "description": "Create a new goal in a workspace",
+            "description": "Create a new OKR-style goal in a workspace. The goal starts with zero key results — add them via clickup_goal_add_kr. The goal's percent-complete is auto-calculated from the average progress of its key results. Returns the created goal object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "name": {"type": "string", "description": "Goal name"},
-                    "due_date": {"type": "integer", "description": "Due date as Unix timestamp (milliseconds)"},
-                    "description": {"type": "string", "description": "Goal description"},
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "name": {"type": "string", "description": "Goal title (e.g. 'Q1 revenue target'). Required and non-empty."},
+                    "due_date": {"type": "integer", "description": "Target completion date as a Unix timestamp in milliseconds (e.g. 1735689600000 for 2025-01-01)."},
+                    "description": {"type": "string", "description": "Goal description / rationale. Markdown supported. Omit for no description."},
                     "owner_ids": {
                         "type": "array",
                         "items": {"type": "integer"},
-                        "description": "List of owner user IDs"
+                        "description": "User IDs to assign as goal owners (they receive notifications about progress). Obtain from clickup_member_list."
                     }
                 },
                 "required": ["name"]
@@ -362,915 +362,915 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_goal_update",
-            "description": "Update an existing goal",
+            "description": "Modify a ClickUp goal's top-level fields (name, description, due date). To change progress, update the goal's key results instead via clickup_goal_update_kr — the goal's percent complete is derived automatically. Returns the updated goal object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "goal_id": {"type": "string", "description": "Goal ID"},
-                    "name": {"type": "string", "description": "New goal name"},
-                    "due_date": {"type": "integer", "description": "New due date as Unix timestamp (milliseconds)"},
-                    "description": {"type": "string", "description": "New goal description"}
+                    "goal_id": {"type": "string", "description": "ID of the goal to update. Obtain from clickup_goal_list (field: id)."},
+                    "name": {"type": "string", "description": "New goal title. Omit to keep current name."},
+                    "due_date": {"type": "integer", "description": "New due date as a Unix timestamp in milliseconds (e.g. 1735689600000 for 2025-01-01)."},
+                    "description": {"type": "string", "description": "New goal description. Markdown supported."}
                 },
                 "required": ["goal_id"]
             }
         },
         {
             "name": "clickup_view_list",
-            "description": "List views for a space, folder, list, or workspace",
+            "description": "List saved views (board, list, calendar, gantt, timeline, etc.) attached to a space, folder, list, or the whole workspace. Exactly one of space_id/folder_id/list_id must be provided — or omit all three to list workspace-level views. Returns a compact array of view objects (id, name, type).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID (mutually exclusive with other IDs)"},
-                    "folder_id": {"type": "string", "description": "Folder ID (mutually exclusive with other IDs)"},
-                    "list_id": {"type": "string", "description": "List ID (mutually exclusive with other IDs)"},
-                    "team_id": {"type": "string", "description": "Workspace (team) ID for workspace-level views. Omit to use the default workspace from config."}
+                    "space_id": {"type": "string", "description": "Space ID whose views to list. Obtain from clickup_space_list. Mutually exclusive with folder_id/list_id."},
+                    "folder_id": {"type": "string", "description": "Folder ID whose views to list. Obtain from clickup_folder_list. Mutually exclusive with space_id/list_id."},
+                    "list_id": {"type": "string", "description": "List ID whose views to list. Obtain from clickup_list_list. Mutually exclusive with space_id/folder_id."},
+                    "team_id": {"type": "string", "description": "Workspace (team) ID — used when all three scope IDs are omitted, to return workspace-level (Everything) views. Obtain from clickup_workspace_list. Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_view_tasks",
-            "description": "Get tasks in a specific view",
+            "description": "Fetch the tasks currently visible in a ClickUp view, honouring the view's configured filters, sort order, and grouping. Returns a paginated array of task objects. Use clickup_view_list to discover view IDs and clickup_view_get for the view's definition.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "view_id": {"type": "string", "description": "View ID"},
-                    "page": {"type": "integer", "description": "Page number (0-indexed, default 0)"}
+                    "view_id": {"type": "string", "description": "ID of the view to read tasks from. Obtain from clickup_view_list (field: id)."},
+                    "page": {"type": "integer", "description": "Zero-indexed page number (default 0). Each page returns up to 30 tasks; increment to paginate."}
                 },
                 "required": ["view_id"]
             }
         },
         {
             "name": "clickup_doc_list",
-            "description": "List docs in a workspace",
+            "description": "List all ClickUp docs in a workspace. Docs are long-form markdown documents separate from tasks and can contain nested pages. Returns a compact array of doc objects (id, name, date_created, date_updated). Use clickup_doc_get for a single doc or clickup_doc_pages to list a doc's pages. Uses v3 cursor pagination.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_doc_get",
-            "description": "Get a specific doc from a workspace",
+            "description": "Fetch metadata for a single ClickUp doc — name, parent, dates, type. Does not return the page bodies; use clickup_doc_pages (with content=true) or clickup_doc_get_page for the markdown content. Returns the doc object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "doc_id": {"type": "string", "description": "Doc ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "doc_id": {"type": "string", "description": "ID of the doc to fetch. Obtain from clickup_doc_list (field: id)."}
                 },
                 "required": ["doc_id"]
             }
         },
         {
             "name": "clickup_doc_pages",
-            "description": "List pages in a doc",
+            "description": "List the pages inside a ClickUp doc, including any nested subpages. Returns an array of page objects (id, name, sub_title, parent_page_id, and optionally content). Pages are ordered by their tree position.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "doc_id": {"type": "string", "description": "Doc ID"},
-                    "content": {"type": "boolean", "description": "Include page content in the response"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "doc_id": {"type": "string", "description": "ID of the parent doc. Obtain from clickup_doc_list (field: id)."},
+                    "content": {"type": "boolean", "description": "true = include each page's full markdown body in the 'content' field; false or omitted = return page metadata only (faster, smaller payload)."}
                 },
                 "required": ["doc_id"]
             }
         },
         {
             "name": "clickup_tag_list",
-            "description": "List tags for a space",
+            "description": "List all tags defined in a ClickUp space. Tags are space-scoped labels (with foreground/background hex colours) that can be applied to tasks within that space. Returns an array of tag objects (name, tag_fg, tag_bg, creator).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"}
+                    "space_id": {"type": "string", "description": "ID of the space whose tags to list. Obtain from clickup_space_list (field: id). Tags are defined per-space, not workspace-wide."}
                 },
                 "required": ["space_id"]
             }
         },
         {
             "name": "clickup_task_add_tag",
-            "description": "Add a tag to a ClickUp task",
+            "description": "Attach an existing tag to a ClickUp task. The tag must already be defined in the task's parent space — use clickup_tag_list to check and clickup_tag_create to add a new tag first. Tags are identified by name, not ID. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "tag_name": {"type": "string", "description": "Tag name to add"}
+                    "task_id": {"type": "string", "description": "ID of the task to tag. Obtain from clickup_task_list (field: id)."},
+                    "tag_name": {"type": "string", "description": "Name of the tag to apply (case-sensitive, must already exist in the task's space). Obtain from clickup_tag_list."}
                 },
                 "required": ["task_id", "tag_name"]
             }
         },
         {
             "name": "clickup_task_remove_tag",
-            "description": "Remove a tag from a ClickUp task",
+            "description": "Detach a tag from a ClickUp task. The tag definition itself is preserved in the space — only this task's association with it is removed. No-op if the tag was not on the task. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "tag_name": {"type": "string", "description": "Tag name to remove"}
+                    "task_id": {"type": "string", "description": "ID of the task to untag. Obtain from clickup_task_list (field: id) or clickup_task_get."},
+                    "tag_name": {"type": "string", "description": "Name of the tag to remove (case-sensitive). See clickup_task_get (field: tags[].name) for tags currently on the task."}
                 },
                 "required": ["task_id", "tag_name"]
             }
         },
         {
             "name": "clickup_webhook_list",
-            "description": "List webhooks for a workspace",
+            "description": "List all webhooks registered on a ClickUp workspace. Each webhook specifies a target endpoint, subscribed events, and optional scope. Returns an array of webhook objects (id, endpoint, events, status, secret, health). Use clickup_webhook_create/update/delete to manage them.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_member_list",
-            "description": "List members of a task or list",
+            "description": "List members (users with direct access) of a specific task or list. Exactly one of task_id or list_id must be provided. Returns an array of user objects (id, username, email, color). Use clickup_user_invite to add people to the workspace first; use clickup_guest_share_task/list to add guests.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID (mutually exclusive with list_id)"},
-                    "list_id": {"type": "string", "description": "List ID (mutually exclusive with task_id)"}
+                    "task_id": {"type": "string", "description": "Task ID whose members to list. Obtain from clickup_task_list (field: id). Mutually exclusive with list_id."},
+                    "list_id": {"type": "string", "description": "List ID whose members to list. Obtain from clickup_list_list (field: id). Mutually exclusive with task_id."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_template_list",
-            "description": "List task templates for a workspace",
+            "description": "List the task templates available in a workspace. Task templates are saved task shapes (name, description, checklists, subtasks, custom fields, etc.) that can be applied via clickup_template_apply_task to create new tasks quickly. Returns an array of template objects (id, name).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "page": {"type": "integer", "description": "Page number (0-indexed, default 0)"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "page": {"type": "integer", "description": "Zero-indexed page number (default 0). Each page returns up to 100 templates; increment to paginate."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_space_get",
-            "description": "Get details of a specific space",
+            "description": "Fetch the full object for a single ClickUp space — name, privacy, statuses, features (time tracking, tags, due dates enabled, etc.), and members. Returns the space object. Use clickup_folder_list or clickup_list_list to enumerate the space's contents.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"}
+                    "space_id": {"type": "string", "description": "ID of the space to fetch. Obtain from clickup_space_list (field: id)."}
                 },
                 "required": ["space_id"]
             }
         },
         {
             "name": "clickup_space_create",
-            "description": "Create a new space in a workspace",
+            "description": "Create a new top-level space in a ClickUp workspace. The new space uses the workspace's default feature set and statuses — customise later via the web UI or by creating folders/lists under it. Returns the created space object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "name": {"type": "string", "description": "Space name"},
-                    "private": {"type": "boolean", "description": "Whether the space is private"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "name": {"type": "string", "description": "Display name for the space (shown in the sidebar)."},
+                    "private": {"type": "boolean", "description": "true = private space (only explicit members see it); false or omitted = visible to the whole workspace."}
                 },
                 "required": ["name"]
             }
         },
         {
             "name": "clickup_space_update",
-            "description": "Update an existing space",
+            "description": "Modify a ClickUp space — rename it, toggle privacy, or archive/unarchive it. Archiving is the reversible alternative to deletion: archived spaces are hidden from default views but retain all their folders, lists, and tasks. Returns the updated space object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"},
-                    "name": {"type": "string", "description": "New space name"},
-                    "private": {"type": "boolean", "description": "Whether the space is private"},
-                    "archived": {"type": "boolean", "description": "Archive/unarchive the space"}
+                    "space_id": {"type": "string", "description": "ID of the space to update. Obtain from clickup_space_list (field: id)."},
+                    "name": {"type": "string", "description": "New space name. Omit to keep current name."},
+                    "private": {"type": "boolean", "description": "true = space is private (visible only to explicit members); false = space is visible to the whole workspace."},
+                    "archived": {"type": "boolean", "description": "true = archive (hide but preserve); false = restore from archive."}
                 },
                 "required": ["space_id"]
             }
         },
         {
             "name": "clickup_space_delete",
-            "description": "Delete a space",
+            "description": "Permanently delete a ClickUp space along with every folder, list, and task inside it. Destructive, irreversible, and widely cascading — confirm with the user before calling. To hide a space without destroying its contents, use clickup_space_update with archived=true instead (archival is reversible). Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"}
+                    "space_id": {"type": "string", "description": "ID of the space to delete. Obtain from clickup_space_list (field: id). All descendant folders, lists, and tasks are deleted with it."}
                 },
                 "required": ["space_id"]
             }
         },
         {
             "name": "clickup_folder_get",
-            "description": "Get details of a specific folder",
+            "description": "Fetch the full object for a single ClickUp folder — name, task_count (a string, per API), archived status, and its child lists. Returns the folder object. Use clickup_list_list with folder_id to get just the lists.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "folder_id": {"type": "string", "description": "Folder ID"}
+                    "folder_id": {"type": "string", "description": "ID of the folder to fetch. Obtain from clickup_folder_list (field: id)."}
                 },
                 "required": ["folder_id"]
             }
         },
         {
             "name": "clickup_folder_create",
-            "description": "Create a new folder in a space",
+            "description": "Create a new folder inside a ClickUp space. Folders group related lists and start empty — add lists via clickup_list_create with folder_id. Returns the created folder object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"},
-                    "name": {"type": "string", "description": "Folder name"}
+                    "space_id": {"type": "string", "description": "ID of the parent space. Obtain from clickup_space_list (field: id)."},
+                    "name": {"type": "string", "description": "Display name for the folder. Must be non-empty and unique within the space."}
                 },
                 "required": ["space_id", "name"]
             }
         },
         {
             "name": "clickup_folder_update",
-            "description": "Update an existing folder",
+            "description": "Rename a ClickUp folder. Only the folder's display name can be changed via this endpoint — to move the folder to a different space, delete and recreate. Returns the updated folder object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "folder_id": {"type": "string", "description": "Folder ID"},
-                    "name": {"type": "string", "description": "New folder name"}
+                    "folder_id": {"type": "string", "description": "ID of the folder to rename. Obtain from clickup_folder_list (field: id) or clickup_folder_get."},
+                    "name": {"type": "string", "description": "New display name for the folder. Must be non-empty and unique within its parent space."}
                 },
                 "required": ["folder_id", "name"]
             }
         },
         {
             "name": "clickup_folder_delete",
-            "description": "Delete a folder",
+            "description": "Permanently delete a ClickUp folder along with every list and task inside it. Destructive, irreversible, and cascading — confirm with the user before calling. If you only want to hide the folder, use clickup_space_update with archived=true on the parent space instead (archival is reversible). Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "folder_id": {"type": "string", "description": "Folder ID"}
+                    "folder_id": {"type": "string", "description": "ID of the folder to delete. Obtain from clickup_folder_list (field: id). All descendant lists and tasks are deleted with it."}
                 },
                 "required": ["folder_id"]
             }
         },
         {
             "name": "clickup_list_get",
-            "description": "Get details of a specific list",
+            "description": "Fetch the full object for a single ClickUp list — name, content/description, statuses, task_count, assignees, due date, and parent folder/space. Returns the list object. Use clickup_task_list with list_id to enumerate tasks inside it.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"}
+                    "list_id": {"type": "string", "description": "ID of the list to fetch. Obtain from clickup_list_list (field: id)."}
                 },
                 "required": ["list_id"]
             }
         },
         {
             "name": "clickup_list_create",
-            "description": "Create a new list in a folder or space (folderless)",
+            "description": "Create a new task list inside either a folder or a space (folderless). Exactly one of folder_id or space_id must be provided. Returns the created list object including its new id — use it as list_id for clickup_task_create and related calls.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "folder_id": {"type": "string", "description": "Folder ID (mutually exclusive with space_id)"},
-                    "space_id": {"type": "string", "description": "Space ID for a folderless list (mutually exclusive with folder_id)"},
-                    "name": {"type": "string", "description": "List name"},
-                    "content": {"type": "string", "description": "List description"},
-                    "due_date": {"type": "integer", "description": "Due date as Unix timestamp (milliseconds)"},
-                    "status": {"type": "string", "description": "List status"}
+                    "folder_id": {"type": "string", "description": "ID of the parent folder. Obtain from clickup_folder_list (field: id). Mutually exclusive with space_id."},
+                    "space_id": {"type": "string", "description": "ID of the parent space — creates a folderless list attached directly to the space. Obtain from clickup_space_list (field: id). Mutually exclusive with folder_id."},
+                    "name": {"type": "string", "description": "Display name for the list. Required and non-empty."},
+                    "content": {"type": "string", "description": "List description shown at the top of the list. Markdown supported. Omit for no description."},
+                    "due_date": {"type": "integer", "description": "List-level due date as a Unix timestamp in milliseconds (e.g. 1735689600000 for 2025-01-01). Individual tasks retain their own due dates."},
+                    "status": {"type": "string", "description": "Default status for tasks added to this list. Must match a status name from the parent space's status set."}
                 },
                 "required": ["name"]
             }
         },
         {
             "name": "clickup_list_update",
-            "description": "Update an existing list",
+            "description": "Modify a ClickUp list's name, description, due date, or status. To move tasks between lists use clickup_task_move, and to add or remove this list from tasks with multi-list membership use clickup_list_add_task / clickup_list_remove_task. Returns the updated list object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"},
-                    "name": {"type": "string", "description": "New list name"},
-                    "content": {"type": "string", "description": "New description"},
-                    "due_date": {"type": "integer", "description": "Due date as Unix timestamp (milliseconds)"},
-                    "status": {"type": "string", "description": "List status"}
+                    "list_id": {"type": "string", "description": "ID of the list to update. Obtain from clickup_list_list (field: id)."},
+                    "name": {"type": "string", "description": "New list name. Omit to keep current name."},
+                    "content": {"type": "string", "description": "New description for the list. Markdown supported."},
+                    "due_date": {"type": "integer", "description": "List-level due date as a Unix timestamp in milliseconds. Individual tasks retain their own due dates."},
+                    "status": {"type": "string", "description": "Default status for tasks added to this list (must match an existing status name in the list's status set)."}
                 },
                 "required": ["list_id"]
             }
         },
         {
             "name": "clickup_list_delete",
-            "description": "Delete a list",
+            "description": "Permanently delete a ClickUp list along with every task inside it, plus their comments, checklists, and attachments. Destructive, irreversible, and cascading — confirm with the user before calling. To move tasks elsewhere first, use clickup_task_move on each, or use clickup_list_update to rename/archive instead. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"}
+                    "list_id": {"type": "string", "description": "ID of the list to delete. Obtain from clickup_list_list (field: id). All tasks inside are deleted with it."}
                 },
                 "required": ["list_id"]
             }
         },
         {
             "name": "clickup_list_add_task",
-            "description": "Add a task to an additional list",
+            "description": "Add a task to a secondary list (multi-list membership) without moving it. The task remains in its original home list and becomes additionally visible in this one — useful for shared roadmaps. To change the home list instead, use clickup_task_move. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"},
-                    "task_id": {"type": "string", "description": "Task ID"}
+                    "list_id": {"type": "string", "description": "ID of the secondary list the task should also appear in. Obtain from clickup_list_list (field: id)."},
+                    "task_id": {"type": "string", "description": "ID of the task to add. Obtain from clickup_task_list (field: id)."}
                 },
                 "required": ["list_id", "task_id"]
             }
         },
         {
             "name": "clickup_list_remove_task",
-            "description": "Remove a task from an additional list",
+            "description": "Remove a task from a secondary list it was added to via clickup_list_add_task. The task itself is NOT deleted — it remains in its home list (and any other secondary lists). Use clickup_task_delete to remove the task entirely. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"},
-                    "task_id": {"type": "string", "description": "Task ID"}
+                    "list_id": {"type": "string", "description": "ID of the secondary list to detach the task from. Obtain from clickup_list_list (field: id). Must not be the task's home list."},
+                    "task_id": {"type": "string", "description": "ID of the task to detach. Obtain from clickup_task_list (field: id)."}
                 },
                 "required": ["list_id", "task_id"]
             }
         },
         {
             "name": "clickup_comment_update",
-            "description": "Update a comment",
+            "description": "Edit the text, assignee, or resolution state of a ClickUp comment on a task, list, or view. The entire comment body is replaced by the new text (no partial edits). Marking resolved=true strikes through the comment and closes the thread. Returns the updated comment object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "comment_id": {"type": "string", "description": "Comment ID"},
-                    "text": {"type": "string", "description": "New comment text"},
-                    "assignee": {"type": "integer", "description": "Reassign comment to user ID"},
-                    "resolved": {"type": "boolean", "description": "Mark comment as resolved"}
+                    "comment_id": {"type": "string", "description": "ID of the comment to edit. Obtain from clickup_comment_list (field: id)."},
+                    "text": {"type": "string", "description": "Replacement body for the comment. ClickUp accepts markdown plus @mentions (e.g. '@username'). The previous body is overwritten entirely."},
+                    "assignee": {"type": "integer", "description": "Reassign the comment to this user ID, who will receive a notification. Obtain from clickup_member_list."},
+                    "resolved": {"type": "boolean", "description": "true = mark the comment thread resolved/closed; false = reopen it."}
                 },
                 "required": ["comment_id", "text"]
             }
         },
         {
             "name": "clickup_comment_delete",
-            "description": "Delete a comment",
+            "description": "Permanently delete a ClickUp comment from a task, list, or view. Destructive and irreversible — the comment and any threaded replies are removed. Use clickup_comment_update with resolved=true instead if you only want to mark the comment as handled. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "comment_id": {"type": "string", "description": "Comment ID"}
+                    "comment_id": {"type": "string", "description": "ID of the comment to delete. Obtain from clickup_comment_list (field: id). The authenticated user must have edit permission on the parent task/list/view."}
                 },
                 "required": ["comment_id"]
             }
         },
         {
             "name": "clickup_task_add_dep",
-            "description": "Add a dependency to a task",
+            "description": "Create a dependency relationship between two tasks — either 'task_id depends on depends_on' (blocks until that is done) or 'dependency_of depends on task_id' (task_id blocks that). Provide exactly one of depends_on or dependency_of. Use clickup_task_link for a simple non-blocking reference. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "depends_on": {"type": "string", "description": "Task ID that this task depends on"},
-                    "dependency_of": {"type": "string", "description": "Task ID that depends on this task"}
+                    "task_id": {"type": "string", "description": "ID of the primary task. Obtain from clickup_task_list (field: id)."},
+                    "depends_on": {"type": "string", "description": "ID of a task that task_id should wait for (task_id is blocked until depends_on is complete). Obtain from clickup_task_list. Mutually exclusive with dependency_of."},
+                    "dependency_of": {"type": "string", "description": "ID of a task that depends on task_id (that task is blocked until task_id is complete). Obtain from clickup_task_list. Mutually exclusive with depends_on."}
                 },
                 "required": ["task_id"]
             }
         },
         {
             "name": "clickup_task_remove_dep",
-            "description": "Remove a dependency from a task",
+            "description": "Remove an existing dependency relationship between two tasks. Provide exactly one of depends_on or dependency_of, matching the direction you set with clickup_task_add_dep. The tasks themselves are not affected. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "depends_on": {"type": "string", "description": "Task ID to remove as a depends_on dependency"},
-                    "dependency_of": {"type": "string", "description": "Task ID to remove as a dependency_of dependency"}
+                    "task_id": {"type": "string", "description": "ID of the primary task in the dependency. Obtain from clickup_task_list (field: id) or clickup_task_get (field: dependencies[])."},
+                    "depends_on": {"type": "string", "description": "ID of the upstream task to detach from task_id (removes the 'task_id waits for this' edge). Mutually exclusive with dependency_of."},
+                    "dependency_of": {"type": "string", "description": "ID of the downstream task to detach (removes the 'this waits for task_id' edge). Mutually exclusive with depends_on."}
                 },
                 "required": ["task_id"]
             }
         },
         {
             "name": "clickup_task_link",
-            "description": "Link two tasks together",
+            "description": "Create a bidirectional reference link between two tasks — a non-blocking 'see also' relationship, unlike dependencies. Both tasks show the other in their 'Linked tasks' panel. Use clickup_task_unlink to remove. For blocking relationships, use clickup_task_add_dep instead. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "links_to": {"type": "string", "description": "Task ID to link to"}
+                    "task_id": {"type": "string", "description": "ID of the first task. Obtain from clickup_task_list (field: id)."},
+                    "links_to": {"type": "string", "description": "ID of the second task to link to. Obtain from clickup_task_list (field: id). The link is visible from both tasks."}
                 },
                 "required": ["task_id", "links_to"]
             }
         },
         {
             "name": "clickup_task_unlink",
-            "description": "Remove a link between two tasks",
+            "description": "Remove a bidirectional reference link previously created with clickup_task_link. The tasks themselves are not affected, only the link between them. No-op if no link exists. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "links_to": {"type": "string", "description": "Task ID to unlink"}
+                    "task_id": {"type": "string", "description": "ID of the first task. Obtain from clickup_task_list (field: id) or clickup_task_get (field: linked_tasks[])."},
+                    "links_to": {"type": "string", "description": "ID of the linked task to unlink from task_id."}
                 },
                 "required": ["task_id", "links_to"]
             }
         },
         {
             "name": "clickup_goal_delete",
-            "description": "Delete a goal",
+            "description": "Permanently delete a ClickUp goal along with all its key results. Destructive, irreversible, and cascading — confirm with the user before calling. Historical progress data on the goal is lost. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "goal_id": {"type": "string", "description": "Goal ID"}
+                    "goal_id": {"type": "string", "description": "ID of the goal to delete. Obtain from clickup_goal_list (field: id) or clickup_goal_get. All child key results are deleted with it."}
                 },
                 "required": ["goal_id"]
             }
         },
         {
             "name": "clickup_goal_add_kr",
-            "description": "Add a key result to a goal",
+            "description": "Add a new key result (KR / sub-target) to a ClickUp goal. KRs drive the goal's overall percent-complete — each KR's progress is averaged. For 'automatic' KRs, link tasks or lists and progress is derived from their status; for number/currency/percentage KRs, report progress via clickup_goal_update_kr. Returns the created key result object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "goal_id": {"type": "string", "description": "Goal ID"},
-                    "name": {"type": "string", "description": "Key result name"},
-                    "type": {"type": "string", "description": "Key result type (number, currency, boolean, percentage, automatic)"},
-                    "steps_start": {"type": "number", "description": "Starting value"},
-                    "steps_end": {"type": "number", "description": "Target value"},
-                    "unit": {"type": "string", "description": "Unit label"},
-                    "owner_ids": {"type": "array", "items": {"type": "integer"}, "description": "Owner user IDs"},
-                    "task_ids": {"type": "array", "items": {"type": "string"}, "description": "Task IDs to link (for automatic type)"},
-                    "list_ids": {"type": "array", "items": {"type": "string"}, "description": "List IDs to link (for automatic type)"}
+                    "goal_id": {"type": "string", "description": "ID of the parent goal. Obtain from clickup_goal_list (field: id)."},
+                    "name": {"type": "string", "description": "Display name of the key result (e.g. 'MRR reaches $50k')."},
+                    "type": {"type": "string", "description": "Key result type: 'number' (numeric target), 'currency' (monetary target), 'boolean' (done/not-done), 'percentage' (0–100), or 'automatic' (derived from linked tasks/lists)."},
+                    "steps_start": {"type": "number", "description": "Starting value of the metric (e.g. 0 for a from-zero KR, current baseline otherwise). Ignored for 'boolean'."},
+                    "steps_end": {"type": "number", "description": "Target value the KR aims to reach. For 'percentage' KRs use 100; for 'boolean' use 1."},
+                    "unit": {"type": "string", "description": "Unit label shown next to numeric values (e.g. 'USD', 'users', 'signups'). Ignored for 'boolean' and 'automatic'."},
+                    "owner_ids": {"type": "array", "items": {"type": "integer"}, "description": "User IDs responsible for this KR. Obtain from clickup_member_list."},
+                    "task_ids": {"type": "array", "items": {"type": "string"}, "description": "Task IDs whose completion drives progress (only for type='automatic'). Obtain from clickup_task_list."},
+                    "list_ids": {"type": "array", "items": {"type": "string"}, "description": "List IDs whose task-completion percentage drives progress (only for type='automatic'). Obtain from clickup_list_list."}
                 },
                 "required": ["goal_id", "name", "type", "steps_start", "steps_end"]
             }
         },
         {
             "name": "clickup_goal_update_kr",
-            "description": "Update a key result",
+            "description": "Update a key result (sub-target) on a ClickUp goal — typically to record current progress, rename, or adjust the unit label. The goal's completion percentage is auto-recalculated from all its key results. Returns the updated key result object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "kr_id": {"type": "string", "description": "Key result ID"},
-                    "steps_current": {"type": "number", "description": "Current progress value"},
-                    "name": {"type": "string", "description": "New key result name"},
-                    "unit": {"type": "string", "description": "Unit label"}
+                    "kr_id": {"type": "string", "description": "Key result ID. Obtain from clickup_goal_get (field: key_results[].id) or the response of clickup_goal_add_kr."},
+                    "steps_current": {"type": "number", "description": "Current progress toward steps_end. For boolean KRs use 0 (not done) or 1 (done). For percentage KRs use 0–100."},
+                    "name": {"type": "string", "description": "New display name for the key result. Omit to keep current name."},
+                    "unit": {"type": "string", "description": "Unit label shown next to numeric values (e.g. 'MRR', 'users'). Ignored for boolean and automatic types."}
                 },
                 "required": ["kr_id"]
             }
         },
         {
             "name": "clickup_goal_delete_kr",
-            "description": "Delete a key result",
+            "description": "Permanently delete a single key result from a ClickUp goal. Destructive and irreversible — the historical progress for this key result is lost, and the goal's overall completion percentage is recalculated from the remaining key results. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "kr_id": {"type": "string", "description": "Key result ID"}
+                    "kr_id": {"type": "string", "description": "ID of the key result to delete. Obtain from clickup_goal_get (field: key_results[].id)."}
                 },
                 "required": ["kr_id"]
             }
         },
         {
             "name": "clickup_time_get",
-            "description": "Get a specific time tracking entry",
+            "description": "Fetch the full object for a single time tracking entry — user, task, start timestamp, duration, description, billable flag, and tags. Returns the time entry object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "timer_id": {"type": "string", "description": "Time entry ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "timer_id": {"type": "string", "description": "ID of the time entry. Obtain from clickup_time_list (field: id) or clickup_time_current."}
                 },
                 "required": ["timer_id"]
             }
         },
         {
             "name": "clickup_time_create",
-            "description": "Create a time tracking entry",
+            "description": "Manually record a historical time tracking entry with a fixed start and duration. Use this for backfilling time (e.g. work done offline). For live timing use clickup_time_start/stop instead. Returns the created time entry object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "task_id": {"type": "string", "description": "Task ID to log time against"},
-                    "start": {"type": "integer", "description": "Start time as Unix timestamp (milliseconds)"},
-                    "duration": {"type": "integer", "description": "Duration in milliseconds"},
-                    "description": {"type": "string", "description": "Time entry description"},
-                    "billable": {"type": "boolean", "description": "Whether this entry is billable"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "task_id": {"type": "string", "description": "ID of the task to attribute the time to. Obtain from clickup_task_list. Omit for a task-less time entry."},
+                    "start": {"type": "integer", "description": "Entry start time as a Unix timestamp in milliseconds (e.g. 1735689600000 for 2025-01-01 00:00 UTC)."},
+                    "duration": {"type": "integer", "description": "Duration in milliseconds (e.g. 3600000 for one hour)."},
+                    "description": {"type": "string", "description": "Free-text description of the work logged. Optional."},
+                    "billable": {"type": "boolean", "description": "true = mark as billable (shows with $ in reports); false or omitted = non-billable."}
                 },
                 "required": ["start", "duration"]
             }
         },
         {
             "name": "clickup_time_update",
-            "description": "Update a time tracking entry",
+            "description": "Modify a recorded time tracking entry. Only the supplied fields are changed; omitted fields keep their current value. Use clickup_time_add_tags / remove_tags for tag changes. Returns the updated time entry object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "timer_id": {"type": "string", "description": "Time entry ID"},
-                    "start": {"type": "integer", "description": "New start time as Unix timestamp (milliseconds)"},
-                    "duration": {"type": "integer", "description": "New duration in milliseconds"},
-                    "description": {"type": "string", "description": "New description"},
-                    "billable": {"type": "boolean", "description": "Whether this entry is billable"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "timer_id": {"type": "string", "description": "ID of the time entry to update. Obtain from clickup_time_list (field: id)."},
+                    "start": {"type": "integer", "description": "New start time as a Unix timestamp in milliseconds. Omit to keep current start."},
+                    "duration": {"type": "integer", "description": "New duration in milliseconds (e.g. 3600000 for one hour). Omit to keep current duration."},
+                    "description": {"type": "string", "description": "New description for the entry. Omit to keep current description."},
+                    "billable": {"type": "boolean", "description": "true = billable, false = non-billable. Omit to keep current value."}
                 },
                 "required": ["timer_id"]
             }
         },
         {
             "name": "clickup_time_delete",
-            "description": "Delete a time tracking entry",
+            "description": "Permanently delete a recorded time tracking entry. Destructive and irreversible — the logged time is removed from reports. To stop a currently running timer, use clickup_time_stop instead (which preserves the record). Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "timer_id": {"type": "string", "description": "Time entry ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "timer_id": {"type": "string", "description": "ID of the time entry to delete. Obtain from clickup_time_list (field: id). Only the entry's owner (or a workspace admin) can delete it."}
                 },
                 "required": ["timer_id"]
             }
         },
         {
             "name": "clickup_view_get",
-            "description": "Get details of a specific view",
+            "description": "Fetch the full definition of a single ClickUp view — name, type (list/board/calendar/gantt/etc.), parent scope, filters, grouping, sort order, and column layout. Does not return the tasks inside the view; use clickup_view_tasks for that. Returns the view object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "view_id": {"type": "string", "description": "View ID"}
+                    "view_id": {"type": "string", "description": "ID of the view to fetch. Obtain from clickup_view_list (field: id)."}
                 },
                 "required": ["view_id"]
             }
         },
         {
             "name": "clickup_view_create",
-            "description": "Create a view for a space, folder, list, or workspace",
+            "description": "Create a new saved view (board, list, calendar, timeline, etc.) attached to a space, folder, list, or the workspace. Creates an empty view with default filters — customise filters/grouping/sort later via the web UI. Returns the created view object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "scope": {"type": "string", "description": "Scope type: space, folder, list, or team"},
-                    "scope_id": {"type": "string", "description": "ID of the scope object"},
-                    "name": {"type": "string", "description": "View name"},
-                    "type": {"type": "string", "description": "View type (list, board, calendar, table, timeline, etc.)"}
+                    "scope": {"type": "string", "description": "Where to attach the view: 'space', 'folder', 'list', or 'team' (workspace-level 'Everything' view)."},
+                    "scope_id": {"type": "string", "description": "ID of the scope object. For scope='space' use a space_id, for 'folder' a folder_id, for 'list' a list_id, for 'team' a workspace/team id (from clickup_workspace_list)."},
+                    "name": {"type": "string", "description": "Display name for the view."},
+                    "type": {"type": "string", "description": "View type: 'list', 'board', 'calendar', 'table', 'timeline', 'gantt', 'map', 'workload', 'activity', 'chat', 'mind_map', 'doc', or 'form'."}
                 },
                 "required": ["scope", "scope_id", "name", "type"]
             }
         },
         {
             "name": "clickup_view_update",
-            "description": "Update an existing view",
+            "description": "Rename a view or change its display type (e.g. from list to board). To change filters, grouping, or sort order, use the ClickUp web UI — those are not exposed via the API. Returns the updated view object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "view_id": {"type": "string", "description": "View ID"},
-                    "name": {"type": "string", "description": "New view name"},
-                    "type": {"type": "string", "description": "New view type"}
+                    "view_id": {"type": "string", "description": "ID of the view to update. Obtain from clickup_view_list (field: id)."},
+                    "name": {"type": "string", "description": "New display name for the view."},
+                    "type": {"type": "string", "description": "New view type: 'list', 'board', 'calendar', 'table', 'timeline', 'gantt', 'map', 'workload', 'activity', 'chat', 'mind_map', 'doc', or 'form'."}
                 },
                 "required": ["view_id", "name", "type"]
             }
         },
         {
             "name": "clickup_view_delete",
-            "description": "Delete a view",
+            "description": "Permanently delete a ClickUp view (board, list, calendar, gantt, etc.). Destructive and irreversible for custom views — default views cannot be deleted and will return a 400 error. The underlying tasks are not affected, only the view definition. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "view_id": {"type": "string", "description": "View ID"}
+                    "view_id": {"type": "string", "description": "ID of the view to delete. Obtain from clickup_view_list (field: id). Must be a user-created view, not a ClickUp-default one."}
                 },
                 "required": ["view_id"]
             }
         },
         {
             "name": "clickup_doc_create",
-            "description": "Create a new doc in a workspace",
+            "description": "Create a new ClickUp doc in a workspace. The doc starts with no pages — add pages via clickup_doc_add_page. Optionally attach the doc under a parent space/folder/list/task instead of the workspace root. Returns the created doc object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "name": {"type": "string", "description": "Doc name"},
-                    "parent": {"type": "object", "description": "Parent object with id and type fields"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "name": {"type": "string", "description": "Display name for the doc (shown in the doc tree)."},
+                    "parent": {"type": "object", "description": "Optional parent object to attach the doc under. Shape: { 'id': '<id>', 'type': <int> } where type is 4=space, 5=folder, 6=list, 7=task. Omit to create at the workspace root."}
                 },
                 "required": ["name"]
             }
         },
         {
             "name": "clickup_doc_add_page",
-            "description": "Add a page to a doc",
+            "description": "Create a new page inside an existing ClickUp doc. Pages support a markdown body plus optional subtitle. Supply parent_page_id to nest the page under another page (creates a page tree). Returns the created page object including its new id, which you can pass to clickup_doc_edit_page or clickup_doc_get_page.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "doc_id": {"type": "string", "description": "Doc ID"},
-                    "name": {"type": "string", "description": "Page name"},
-                    "content": {"type": "string", "description": "Page content (markdown)"},
-                    "sub_title": {"type": "string", "description": "Page subtitle"},
-                    "parent_page_id": {"type": "string", "description": "Parent page ID for nested pages"}
+                    "doc_id": {"type": "string", "description": "ID of the parent doc. Obtain from clickup_doc_list (field: id)."},
+                    "name": {"type": "string", "description": "Title shown in the doc's left-hand page navigator."},
+                    "content": {"type": "string", "description": "Initial body of the page in ClickUp-flavoured markdown. Omit to create an empty page you can populate later via clickup_doc_edit_page."},
+                    "sub_title": {"type": "string", "description": "Optional subtitle rendered under the page title."},
+                    "parent_page_id": {"type": "string", "description": "ID of a sibling page to nest this page under. Omit to create a top-level page. Obtain from clickup_doc_pages (field: id)."}
                 },
                 "required": ["doc_id", "name"]
             }
         },
         {
             "name": "clickup_doc_edit_page",
-            "description": "Edit an existing page in a doc",
+            "description": "Rename or rewrite an existing page inside a ClickUp doc. The supplied content replaces the current page body entirely (not an append). For a fresh page use clickup_doc_add_page instead. Returns the updated page object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "doc_id": {"type": "string", "description": "Doc ID"},
-                    "page_id": {"type": "string", "description": "Page ID"},
-                    "name": {"type": "string", "description": "New page name"},
-                    "content": {"type": "string", "description": "New page content (markdown)"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "doc_id": {"type": "string", "description": "ID of the parent doc. Obtain from clickup_doc_list (field: id)."},
+                    "page_id": {"type": "string", "description": "ID of the page to edit. Obtain from clickup_doc_pages (field: id)."},
+                    "name": {"type": "string", "description": "New page title. Omit to keep current title."},
+                    "content": {"type": "string", "description": "New page body in ClickUp-flavoured markdown. Replaces the existing body entirely. Omit to leave content unchanged."}
                 },
                 "required": ["doc_id", "page_id"]
             }
         },
         {
             "name": "clickup_chat_channel_create",
-            "description": "Create a chat channel in a workspace",
+            "description": "Create a new ClickUp Chat channel in a workspace. For one-on-one messages use clickup_chat_dm instead. Add members later via the channel-members endpoint. Returns the created channel object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "name": {"type": "string", "description": "Channel name"},
-                    "description": {"type": "string", "description": "Channel description"},
-                    "visibility": {"type": "string", "description": "Channel visibility (public or private)"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "name": {"type": "string", "description": "Channel name (e.g. 'product-launch'). Must be unique within the workspace."},
+                    "description": {"type": "string", "description": "Optional channel topic/description shown in the header."},
+                    "visibility": {"type": "string", "description": "Channel visibility: 'public' (any workspace member can join) or 'private' (invite only). Defaults to 'public'."}
                 },
                 "required": ["name"]
             }
         },
         {
             "name": "clickup_chat_channel_get",
-            "description": "Get a chat channel",
+            "description": "Fetch metadata for a single ClickUp chat channel — name, description, visibility, member count, latest activity. Does not return the messages themselves; use clickup_chat_message_list for that. Returns the channel object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "channel_id": {"type": "string", "description": "Channel ID"}
+                    "channel_id": {"type": "string", "description": "ID of the channel to fetch. Obtain from clickup_chat_channel_list (field: id)."}
                 },
                 "required": ["channel_id"]
             }
         },
         {
             "name": "clickup_chat_channel_update",
-            "description": "Update a chat channel",
+            "description": "Rename a ClickUp chat channel or change its description. To change membership or visibility use the dedicated channel-members and channel-followers tools. Returns the updated channel object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "channel_id": {"type": "string", "description": "Channel ID"},
-                    "name": {"type": "string", "description": "New channel name"},
-                    "description": {"type": "string", "description": "New channel description"}
+                    "channel_id": {"type": "string", "description": "ID of the channel to update. Obtain from clickup_chat_channel_list (field: id)."},
+                    "name": {"type": "string", "description": "New display name for the channel. Must be unique within the workspace."},
+                    "description": {"type": "string", "description": "New channel description/topic shown in the channel header. Markdown supported."}
                 },
                 "required": ["channel_id"]
             }
         },
         {
             "name": "clickup_chat_channel_delete",
-            "description": "Delete a chat channel",
+            "description": "Permanently delete a ClickUp Chat channel along with every message and reply it contains. Destructive, irreversible, and cascading — confirm with the user before calling. The channel vanishes from the workspace for all members. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "channel_id": {"type": "string", "description": "Channel ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "channel_id": {"type": "string", "description": "ID of the channel to delete. Obtain from clickup_chat_channel_list (field: id). All messages and replies inside are deleted with it."}
                 },
                 "required": ["channel_id"]
             }
         },
         {
             "name": "clickup_chat_message_list",
-            "description": "List messages in a chat channel",
+            "description": "List messages in a ClickUp Chat channel, newest first. Only top-level messages are returned; use clickup_chat_reply_list for threaded replies. Uses v3 cursor pagination — pass the 'cursor' from the previous response to page further back. Returns an array of message objects plus a next_cursor.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "channel_id": {"type": "string", "description": "Channel ID"},
-                    "cursor": {"type": "string", "description": "Pagination cursor"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "channel_id": {"type": "string", "description": "ID of the channel. Obtain from clickup_chat_channel_list (field: id)."},
+                    "cursor": {"type": "string", "description": "Opaque pagination cursor from the previous response's next_cursor field. Omit for the first page (newest messages)."}
                 },
                 "required": ["channel_id"]
             }
         },
         {
             "name": "clickup_chat_message_send",
-            "description": "Send a message to a chat channel",
+            "description": "Post a new top-level message to a ClickUp Chat channel. For replies inside a thread use clickup_chat_reply_send; for DMs use clickup_chat_dm. Returns the created message object including its new id, which you can pass to clickup_chat_reaction_add, clickup_chat_reply_send, etc.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "channel_id": {"type": "string", "description": "Channel ID"},
-                    "content": {"type": "string", "description": "Message content"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "channel_id": {"type": "string", "description": "ID of the target channel. Obtain from clickup_chat_channel_list (field: id)."},
+                    "content": {"type": "string", "description": "Message body. Supports markdown, @mentions (e.g. '@username'), and emoji."}
                 },
                 "required": ["channel_id", "content"]
             }
         },
         {
             "name": "clickup_chat_message_delete",
-            "description": "Delete a chat message",
+            "description": "Permanently delete a message from a ClickUp chat channel or DM thread. Destructive and irreversible — the message and its threaded replies are removed for all viewers. Only the message author or a workspace admin can delete; other users will get a 403. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "message_id": {"type": "string", "description": "Message ID"}
+                    "message_id": {"type": "string", "description": "ID of the message to delete. Obtain from clickup_chat_message_list (field: id) or clickup_chat_reply_list."}
                 },
                 "required": ["message_id"]
             }
         },
         {
             "name": "clickup_chat_dm",
-            "description": "Send a direct message to a user",
+            "description": "Send a direct message from the authenticated user to another workspace member. If no DM channel exists between the two users, one is created automatically. Returns the created message object. Use clickup_chat_message_send for channel messages.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "user_id": {"type": "integer", "description": "User ID to DM"},
-                    "content": {"type": "string", "description": "Message content"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "user_id": {"type": "integer", "description": "Numeric user ID of the recipient. Obtain from clickup_member_list or clickup_user_get (field: id)."},
+                    "content": {"type": "string", "description": "Message body. Supports markdown, emoji, and @mentions."}
                 },
                 "required": ["user_id", "content"]
             }
         },
         {
             "name": "clickup_webhook_create",
-            "description": "Create a webhook for a workspace",
+            "description": "Register an HTTPS endpoint that ClickUp will POST events to as things happen in the workspace (tasks created, comments added, status changes, etc.). Optionally scope the webhook to a single space, folder, list, or task. The response includes a 'secret' you should use to verify the X-Signature header on incoming payloads. Returns the created webhook object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "endpoint": {"type": "string", "description": "Webhook URL endpoint"},
+                    "endpoint": {"type": "string", "description": "Public HTTPS URL that will receive event POSTs. Must respond 2xx within 5 seconds or ClickUp will retry/suspend."},
                     "events": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of events to subscribe to (use ['*'] for all events)"
+                        "description": "Event names to subscribe to (e.g. ['taskCreated','taskUpdated','taskStatusUpdated','commentPosted']). Pass ['*'] to subscribe to every event ClickUp emits."
                     },
-                    "space_id": {"type": "string", "description": "Filter events to a specific space"},
-                    "folder_id": {"type": "string", "description": "Filter events to a specific folder"},
-                    "list_id": {"type": "string", "description": "Filter events to a specific list"},
-                    "task_id": {"type": "string", "description": "Filter events to a specific task"}
+                    "space_id": {"type": "string", "description": "Scope events to this space only. Mutually exclusive with folder_id/list_id/task_id."},
+                    "folder_id": {"type": "string", "description": "Scope events to this folder only. Mutually exclusive with space_id/list_id/task_id."},
+                    "list_id": {"type": "string", "description": "Scope events to this list only. Mutually exclusive with space_id/folder_id/task_id."},
+                    "task_id": {"type": "string", "description": "Scope events to this task only. Mutually exclusive with space_id/folder_id/list_id."}
                 },
                 "required": ["endpoint", "events"]
             }
         },
         {
             "name": "clickup_webhook_update",
-            "description": "Update a webhook",
+            "description": "Change the delivery endpoint, subscribed events, or active status of a ClickUp webhook. To temporarily pause deliveries without losing the webhook config, set status='suspended' (then resume later with status='active'). Returns the updated webhook object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "webhook_id": {"type": "string", "description": "Webhook ID"},
-                    "endpoint": {"type": "string", "description": "New webhook URL endpoint"},
+                    "webhook_id": {"type": "string", "description": "ID of the webhook to update. Obtain from clickup_webhook_list (field: id)."},
+                    "endpoint": {"type": "string", "description": "New HTTPS URL that ClickUp will POST events to. Must be publicly reachable and respond with 2xx within 5 seconds."},
                     "events": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "New list of events to subscribe to"
+                        "description": "New list of event names to subscribe to (e.g. ['taskCreated','taskUpdated']). Pass ['*'] to subscribe to every event. Omit to leave subscriptions unchanged."
                     },
-                    "status": {"type": "string", "description": "Webhook status (active or suspended)"}
+                    "status": {"type": "string", "description": "'active' to deliver events; 'suspended' to pause deliveries without deleting the webhook."}
                 },
                 "required": ["webhook_id"]
             }
         },
         {
             "name": "clickup_webhook_delete",
-            "description": "Delete a webhook",
+            "description": "Permanently delete a ClickUp webhook, stopping all future event deliveries to its endpoint. Destructive and irreversible — the webhook record is removed immediately. If you only want to pause deliveries, use clickup_webhook_update with status='suspended' instead. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "webhook_id": {"type": "string", "description": "Webhook ID"}
+                    "webhook_id": {"type": "string", "description": "ID of the webhook to delete. Obtain from clickup_webhook_list (field: id). The authenticated user must own the webhook or be a workspace admin."}
                 },
                 "required": ["webhook_id"]
             }
         },
         {
             "name": "clickup_checklist_add_item",
-            "description": "Add an item to a checklist",
+            "description": "Append a new item to an existing ClickUp checklist on a task. The item starts unresolved. To edit or resolve items use clickup_checklist_update_item; to remove them use clickup_checklist_delete_item. Returns the updated checklist object (with all items).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "checklist_id": {"type": "string", "description": "Checklist ID"},
-                    "name": {"type": "string", "description": "Item name"},
-                    "assignee": {"type": "integer", "description": "Assign item to user ID"}
+                    "checklist_id": {"type": "string", "description": "ID of the parent checklist. Obtain from clickup_task_get (field: checklists[].id)."},
+                    "name": {"type": "string", "description": "Display text of the new checklist item (e.g. 'Send release notes')."},
+                    "assignee": {"type": "integer", "description": "Optional user ID to assign this item to (they will see it on their assigned work). Obtain from clickup_member_list."}
                 },
                 "required": ["checklist_id", "name"]
             }
         },
         {
             "name": "clickup_checklist_update_item",
-            "description": "Update a checklist item",
+            "description": "Modify a single checklist item on a ClickUp task — rename it, toggle its resolved state, or change its assignee. Use clickup_checklist_add_item to create new items and clickup_checklist_delete_item to remove them. Returns the updated checklist object (all items).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "checklist_id": {"type": "string", "description": "Checklist ID"},
-                    "item_id": {"type": "string", "description": "Checklist item ID"},
-                    "name": {"type": "string", "description": "New item name"},
-                    "resolved": {"type": "boolean", "description": "Mark item as resolved"},
-                    "assignee": {"type": "integer", "description": "Reassign item to user ID"}
+                    "checklist_id": {"type": "string", "description": "ID of the parent checklist. Obtain from clickup_task_get (field: checklists[].id)."},
+                    "item_id": {"type": "string", "description": "ID of the item to update. Obtain from clickup_task_get (field: checklists[].items[].id)."},
+                    "name": {"type": "string", "description": "New text for the item. Omit to keep current text."},
+                    "resolved": {"type": "boolean", "description": "true = mark as done (strike-through); false = mark as open."},
+                    "assignee": {"type": "integer", "description": "Reassign the item to this user ID. Obtain user IDs from clickup_member_list or clickup_user_get. Pass no value to leave assignee unchanged."}
                 },
                 "required": ["checklist_id", "item_id"]
             }
         },
         {
             "name": "clickup_checklist_delete_item",
-            "description": "Delete a checklist item",
+            "description": "Permanently delete a single item from a ClickUp checklist. Destructive and irreversible. To resolve the item (mark done) without deleting, use clickup_checklist_update_item with resolved=true. Returns the updated checklist object (remaining items).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "checklist_id": {"type": "string", "description": "Checklist ID"},
-                    "item_id": {"type": "string", "description": "Checklist item ID"}
+                    "checklist_id": {"type": "string", "description": "ID of the parent checklist. Obtain from clickup_task_get (field: checklists[].id)."},
+                    "item_id": {"type": "string", "description": "ID of the item to delete. Obtain from clickup_task_get (field: checklists[].items[].id)."}
                 },
                 "required": ["checklist_id", "item_id"]
             }
         },
         {
             "name": "clickup_user_get",
-            "description": "Get a user in a workspace",
+            "description": "Fetch the profile of a specific member of a ClickUp workspace — username, email, color, profile picture, role. Returns the user object. Use clickup_member_list for task/list members; use clickup_whoami for the authenticated user.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "user_id": {"type": "integer", "description": "User ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "user_id": {"type": "integer", "description": "Numeric user ID. Obtain from clickup_member_list or clickup_workspace_list (field: members[].user.id)."}
                 },
                 "required": ["user_id"]
             }
         },
         {
             "name": "clickup_workspace_seats",
-            "description": "Get seat usage for a workspace",
+            "description": "Get the seat-usage breakdown for a ClickUp workspace — how many paid member seats, guest seats, and internal seats are used vs. available. Useful before inviting new users to confirm capacity. Returns an object with member/guest/internal seat counts.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_workspace_plan",
-            "description": "Get the plan for a workspace",
+            "description": "Get the current subscription plan of a ClickUp workspace (Free, Unlimited, Business, Business Plus, Enterprise), along with plan_name and plan_id. Some features (guests, audit logs, ACLs) require Enterprise. Returns the plan object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_tag_create",
-            "description": "Create a tag in a space",
+            "description": "Define a new tag in a ClickUp space. Tags are space-scoped and must be created before they can be applied to tasks via clickup_task_add_tag. Note: create uses tag_fg/tag_bg, but clickup_tag_update uses fg_color/bg_color (API inconsistency). Returns an empty object on success; use clickup_tag_list to see the created tag.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"},
-                    "name": {"type": "string", "description": "Tag name"},
-                    "tag_fg": {"type": "string", "description": "Foreground color (hex)"},
-                    "tag_bg": {"type": "string", "description": "Background color (hex)"}
+                    "space_id": {"type": "string", "description": "ID of the space to create the tag in. Obtain from clickup_space_list (field: id)."},
+                    "name": {"type": "string", "description": "Tag name (e.g. 'blocked', 'priority'). Must be unique within the space."},
+                    "tag_fg": {"type": "string", "description": "Text (foreground) hex colour including leading '#' (e.g. '#FFFFFF'). Omit for default."},
+                    "tag_bg": {"type": "string", "description": "Pill (background) hex colour including leading '#' (e.g. '#FF0000'). Omit for default."}
                 },
                 "required": ["space_id", "name"]
             }
         },
         {
             "name": "clickup_tag_update",
-            "description": "Update a tag in a space",
+            "description": "Rename a tag or change its colours within a ClickUp space. All tasks using the tag are automatically updated with the new name/colours. Note: update uses fg_color/bg_color whereas tag_create uses tag_fg/tag_bg (API inconsistency). Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"},
-                    "tag_name": {"type": "string", "description": "Current tag name"},
-                    "name": {"type": "string", "description": "New tag name"},
-                    "tag_fg": {"type": "string", "description": "New foreground color (hex)"},
-                    "tag_bg": {"type": "string", "description": "New background color (hex)"}
+                    "space_id": {"type": "string", "description": "ID of the space containing the tag. Obtain from clickup_space_list (field: id)."},
+                    "tag_name": {"type": "string", "description": "Current name of the tag to update. Obtain from clickup_tag_list (field: name)."},
+                    "name": {"type": "string", "description": "New tag name. Omit to keep current name."},
+                    "tag_fg": {"type": "string", "description": "New text (foreground) hex colour with leading '#'. Note: forwarded as fg_color to the API."},
+                    "tag_bg": {"type": "string", "description": "New pill (background) hex colour with leading '#'. Note: forwarded as bg_color to the API."}
                 },
                 "required": ["space_id", "tag_name"]
             }
         },
         {
             "name": "clickup_tag_delete",
-            "description": "Delete a tag from a space",
+            "description": "Delete a tag from a ClickUp space. The tag is removed from every task that uses it (the tasks themselves are not affected). Destructive and irreversible. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"},
-                    "tag_name": {"type": "string", "description": "Tag name"}
+                    "space_id": {"type": "string", "description": "ID of the space containing the tag. Obtain from clickup_space_list (field: id)."},
+                    "tag_name": {"type": "string", "description": "Name of the tag to delete. Obtain from clickup_tag_list (field: name)."}
                 },
                 "required": ["space_id", "tag_name"]
             }
         },
         {
             "name": "clickup_field_unset",
-            "description": "Remove a custom field value from a task",
+            "description": "Clear a custom field value on a ClickUp task — sets it back to empty/unset. The field definition on the list remains intact. Use clickup_field_set to assign a new value instead. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "field_id": {"type": "string", "description": "Custom field ID"}
+                    "task_id": {"type": "string", "description": "ID of the task. Obtain from clickup_task_list (field: id)."},
+                    "field_id": {"type": "string", "description": "ID of the custom field to clear. Obtain from clickup_field_list (field: id) or clickup_task_get (field: custom_fields[].id)."}
                 },
                 "required": ["task_id", "field_id"]
             }
         },
         {
             "name": "clickup_attachment_list",
-            "description": "List attachments on a task",
+            "description": "List files attached to a ClickUp task — each attachment's id, title, size, mime type, url, and uploader. Uses the v3 attachments endpoint (cursor pagination). Use clickup_attachment_upload to add a new file. Returns an array of attachment objects.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "task_id": {"type": "string", "description": "Task ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "task_id": {"type": "string", "description": "ID of the task whose attachments to list. Obtain from clickup_task_list (field: id)."}
                 },
                 "required": ["task_id"]
             }
         },
         {
             "name": "clickup_shared_list",
-            "description": "Get shared hierarchy (tasks, lists, folders) for a workspace",
+            "description": "List every task, list, and folder that has been explicitly shared with the authenticated user from outside their default hierarchy (e.g. items shared by other workspace members). Useful for discovering items you have access to but don't own. Returns an object with shared tasks, lists, and folders arrays.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_group_list",
-            "description": "List user groups (teams) in a workspace",
+            "description": "List user groups (also called 'teams' in the ClickUp UI) in a workspace. A group is a named collection of users that can be @-mentioned or assigned as a unit. Returns an array of group objects (id, name, members).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
                     "group_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filter by specific group IDs"
+                        "description": "Optional filter to return only these group IDs. Omit to return all groups in the workspace."
                     }
                 },
                 "required": []
@@ -1278,16 +1278,16 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_group_create",
-            "description": "Create a user group in a workspace",
+            "description": "Create a new user group ('team' in ClickUp's UI) in a workspace. Groups let you @-mention or assign multiple users as a unit. At least one initial member is required. Returns the created group object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "name": {"type": "string", "description": "Group name"},
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "name": {"type": "string", "description": "Display name for the group (e.g. 'Frontend Engineers')."},
                     "member_ids": {
                         "type": "array",
                         "items": {"type": "integer"},
-                        "description": "User IDs to add as members"
+                        "description": "User IDs to add as initial members. Obtain from clickup_member_list or clickup_user_get (field: id)."
                     }
                 },
                 "required": ["name"]
@@ -1295,21 +1295,21 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_group_update",
-            "description": "Update a user group",
+            "description": "Rename a user group and/or add/remove its members. All changes are applied in one call. Use clickup_group_list first to see current membership. Returns the updated group object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "group_id": {"type": "string", "description": "Group ID"},
-                    "name": {"type": "string", "description": "New group name"},
+                    "group_id": {"type": "string", "description": "ID of the group to update. Obtain from clickup_group_list (field: id)."},
+                    "name": {"type": "string", "description": "New display name. Omit to keep current name."},
                     "add_members": {
                         "type": "array",
                         "items": {"type": "integer"},
-                        "description": "User IDs to add"
+                        "description": "User IDs to add to the group (additive — does not replace current members)."
                     },
                     "rem_members": {
                         "type": "array",
                         "items": {"type": "integer"},
-                        "description": "User IDs to remove"
+                        "description": "User IDs to remove from the group (no-op if not currently a member)."
                     }
                 },
                 "required": ["group_id"]
@@ -1317,45 +1317,45 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_group_delete",
-            "description": "Delete a user group",
+            "description": "Permanently delete a ClickUp user group. Destructive and irreversible — assignments and mentions that referenced the group remain as historical records, but the group can no longer be used going forward. The individual users are not affected. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "group_id": {"type": "string", "description": "Group ID"}
+                    "group_id": {"type": "string", "description": "ID of the group to delete. Obtain from clickup_group_list (field: id)."}
                 },
                 "required": ["group_id"]
             }
         },
         {
             "name": "clickup_role_list",
-            "description": "List custom roles in a workspace",
+            "description": "List the custom roles defined in a ClickUp workspace (Member, Guest, Admin, Owner, plus any custom roles on Enterprise plans). Roles define baseline permissions assigned to users. Returns an array of role objects (id, name, members).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_guest_get",
-            "description": "Get a guest in a workspace",
+            "description": "Fetch the profile of a specific guest user in a ClickUp workspace — email, permissions (can_edit_tags, can_see_time_spent, can_create_views), and shared items. Guests are external collaborators with limited access. Requires Enterprise plan. Returns the guest object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "guest_id": {"type": "integer", "description": "Guest user ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "guest_id": {"type": "integer", "description": "Numeric guest user ID. Obtain from clickup_guest_invite (returns the new guest) or the guest's entry in a shared-item's members list."}
                 },
                 "required": ["guest_id"]
             }
         },
         {
             "name": "clickup_task_time_in_status",
-            "description": "Get time a task has spent in each status",
+            "description": "Report how long a task has spent in each status since creation (e.g. 3 days in 'open', 1 day in 'in review'). Useful for cycle-time analysis. Returns an object mapping status names to total-time and since-timestamp values (all times in milliseconds).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"}
+                    "task_id": {"type": "string", "description": "ID of the task. Obtain from clickup_task_list (field: id) or clickup_task_search."}
                 },
                 "required": ["task_id"]
             }
@@ -1375,14 +1375,14 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_task_set_estimate",
-            "description": "Set a time estimate for a specific user on a task",
+            "description": "Set a per-user time estimate on a ClickUp task. Additive — other users' estimates are untouched. To replace all user estimates at once use clickup_task_replace_estimates instead. Estimates are used in workload views and reports. Returns the updated task estimate object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "user_id": {"type": "integer", "description": "User ID to set estimate for"},
-                    "time_estimate": {"type": "integer", "description": "Time estimate in milliseconds"}
+                    "task_id": {"type": "string", "description": "ID of the task. Obtain from clickup_task_list (field: id)."},
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "user_id": {"type": "integer", "description": "Numeric ID of the user whose estimate to set. Obtain from clickup_member_list."},
+                    "time_estimate": {"type": "integer", "description": "Estimated effort in milliseconds (e.g. 3600000 = 1 hour, 28800000 = 8 hours)."}
                 },
                 "required": ["task_id", "user_id", "time_estimate"]
             }
@@ -1403,7 +1403,7 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_auth_check",
-            "description": "Check if the current API token is valid",
+            "description": "Verify that the configured ClickUp API token is valid by hitting the /user endpoint. Returns an ok:true result if the token is accepted, or an error if it's missing, malformed, expired, or revoked. Use clickup_whoami instead to also get the authenticated user's profile.",
             "inputSchema": {
                 "type": "object",
                 "properties": {},
@@ -1412,161 +1412,161 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_checklist_update",
-            "description": "Update a checklist (rename or reorder)",
+            "description": "Rename a checklist or change its position among the task's checklists. Does not affect the checklist's items — use clickup_checklist_update_item / add_item / delete_item for those. Returns the updated checklist object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "checklist_id": {"type": "string", "description": "Checklist ID"},
-                    "name": {"type": "string", "description": "New checklist name"},
-                    "position": {"type": "integer", "description": "New position index"}
+                    "checklist_id": {"type": "string", "description": "ID of the checklist to update. Obtain from clickup_task_get (field: checklists[].id)."},
+                    "name": {"type": "string", "description": "New display name for the checklist. Omit to keep current name."},
+                    "position": {"type": "integer", "description": "Zero-indexed position among the task's checklists (0 = first). Omit to keep current position."}
                 },
                 "required": ["checklist_id"]
             }
         },
         {
             "name": "clickup_comment_replies",
-            "description": "Get replies to a comment",
+            "description": "List the threaded replies attached to a top-level ClickUp comment, oldest first. Returns an array of reply objects (id, comment_text, user, date). Use clickup_comment_reply to post a new reply to the thread.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "comment_id": {"type": "string", "description": "Comment ID"}
+                    "comment_id": {"type": "string", "description": "ID of the parent comment. Obtain from clickup_comment_list (field: id)."}
                 },
                 "required": ["comment_id"]
             }
         },
         {
             "name": "clickup_comment_reply",
-            "description": "Post a reply to a comment",
+            "description": "Post a threaded reply under an existing ClickUp comment. Replies appear indented beneath the parent comment. Returns the created reply object including its new id. For a top-level comment, use clickup_comment_create instead.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "comment_id": {"type": "string", "description": "Comment ID"},
-                    "text": {"type": "string", "description": "Reply text"},
-                    "assignee": {"type": "integer", "description": "Assign the reply to a user ID"}
+                    "comment_id": {"type": "string", "description": "ID of the parent comment to reply to. Obtain from clickup_comment_list (field: id)."},
+                    "text": {"type": "string", "description": "Reply body. Markdown and @mentions supported."},
+                    "assignee": {"type": "integer", "description": "Optional user ID to assign the reply to — they receive a notification. Obtain from clickup_member_list."}
                 },
                 "required": ["comment_id", "text"]
             }
         },
         {
             "name": "clickup_chat_channel_list",
-            "description": "List chat channels in a workspace",
+            "description": "List all ClickUp Chat channels in a workspace that the authenticated user can see. Uses v3 cursor pagination. Returns an array of channel objects (id, name, visibility, topic, last_message_at). Use clickup_chat_channel_create to create new channels.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "include_closed": {"type": "boolean", "description": "Include closed channels"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "include_closed": {"type": "boolean", "description": "true = include archived/closed channels in the result; false or omitted = only active channels."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_chat_channel_followers",
-            "description": "Get followers of a chat channel",
+            "description": "List the users who follow (receive notifications from) a ClickUp Chat channel. Followers are a subset of members — a member may or may not be a follower. Returns an array of user objects.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "channel_id": {"type": "string", "description": "Channel ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "channel_id": {"type": "string", "description": "ID of the channel. Obtain from clickup_chat_channel_list (field: id)."}
                 },
                 "required": ["channel_id"]
             }
         },
         {
             "name": "clickup_chat_channel_members",
-            "description": "Get members of a chat channel",
+            "description": "List the users who are members of a ClickUp Chat channel (can read and post). For notification-receivers only use clickup_chat_channel_followers. Returns an array of user objects (id, username, email).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "channel_id": {"type": "string", "description": "Channel ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "channel_id": {"type": "string", "description": "ID of the channel. Obtain from clickup_chat_channel_list (field: id)."}
                 },
                 "required": ["channel_id"]
             }
         },
         {
             "name": "clickup_chat_message_update",
-            "description": "Update (edit) a chat message",
+            "description": "Edit the body of an existing ClickUp Chat message. Only the author (or a workspace admin) can edit a message; others will get a 403. The supplied text replaces the existing body entirely. Returns the updated message object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "message_id": {"type": "string", "description": "Message ID"},
-                    "text": {"type": "string", "description": "New message content"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "message_id": {"type": "string", "description": "ID of the message to edit. Obtain from clickup_chat_message_list (field: id) or clickup_chat_reply_list."},
+                    "text": {"type": "string", "description": "Replacement body for the message. Markdown, emoji, and @mentions supported. Overwrites the existing body entirely."}
                 },
                 "required": ["message_id", "text"]
             }
         },
         {
             "name": "clickup_chat_reaction_list",
-            "description": "List reactions on a chat message",
+            "description": "List the emoji reactions on a ClickUp Chat message grouped by emoji — each entry includes the emoji, count, and the users who reacted with it. Returns an array of reaction summary objects.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "message_id": {"type": "string", "description": "Message ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "message_id": {"type": "string", "description": "ID of the message whose reactions to list. Obtain from clickup_chat_message_list (field: id)."}
                 },
                 "required": ["message_id"]
             }
         },
         {
             "name": "clickup_chat_reaction_add",
-            "description": "Add a reaction to a chat message",
+            "description": "Add an emoji reaction from the authenticated user to a ClickUp Chat message. If the user has already reacted with the same emoji, the call is a no-op. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "message_id": {"type": "string", "description": "Message ID"},
-                    "emoji": {"type": "string", "description": "Emoji reaction (e.g. '👍')"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "message_id": {"type": "string", "description": "ID of the message to react to. Obtain from clickup_chat_message_list (field: id) or clickup_chat_reply_list."},
+                    "emoji": {"type": "string", "description": "Unicode emoji character to add (e.g. '👍', '🎉', '❤️'). Custom Slack-style shortcodes (':+1:') are not supported — use the raw emoji character."}
                 },
                 "required": ["message_id", "emoji"]
             }
         },
         {
             "name": "clickup_chat_reaction_remove",
-            "description": "Remove a reaction from a chat message",
+            "description": "Remove the authenticated user's emoji reaction from a ClickUp Chat message. Only removes your own reaction — other users' reactions of the same emoji are preserved. No-op if you haven't reacted with the given emoji. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "message_id": {"type": "string", "description": "Message ID"},
-                    "emoji": {"type": "string", "description": "Emoji to remove"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "message_id": {"type": "string", "description": "ID of the message. Obtain from clickup_chat_message_list (field: id)."},
+                    "emoji": {"type": "string", "description": "The Unicode emoji character to remove (e.g. '👍'). Must match the exact emoji you reacted with."}
                 },
                 "required": ["message_id", "emoji"]
             }
         },
         {
             "name": "clickup_chat_reply_list",
-            "description": "List replies to a chat message",
+            "description": "List the threaded replies attached to a top-level ClickUp Chat message, oldest first. Returns an array of reply objects. Use clickup_chat_reply_send to post a new reply.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "message_id": {"type": "string", "description": "Message ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "message_id": {"type": "string", "description": "ID of the parent message. Obtain from clickup_chat_message_list (field: id)."}
                 },
                 "required": ["message_id"]
             }
         },
         {
             "name": "clickup_chat_reply_send",
-            "description": "Send a reply to a chat message",
+            "description": "Post a threaded reply beneath an existing ClickUp Chat message. The reply appears in the message's thread panel. Returns the created reply object. Use clickup_chat_message_send for new top-level messages.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "message_id": {"type": "string", "description": "Message ID"},
-                    "text": {"type": "string", "description": "Reply content"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "message_id": {"type": "string", "description": "ID of the parent message to reply to. Obtain from clickup_chat_message_list (field: id)."},
+                    "text": {"type": "string", "description": "Reply body. Markdown, emoji, and @mentions supported."}
                 },
                 "required": ["message_id", "text"]
             }
         },
         {
             "name": "clickup_chat_tagged_users",
-            "description": "Get users tagged in a chat message",
+            "description": "List the users explicitly @-mentioned (tagged) in a ClickUp Chat message body. Useful for reading who a message was addressed to. Returns an array of user objects.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "message_id": {"type": "string", "description": "Message ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "message_id": {"type": "string", "description": "ID of the message. Obtain from clickup_chat_message_list (field: id)."}
                 },
                 "required": ["message_id"]
             }
@@ -1595,20 +1595,20 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_time_add_tags",
-            "description": "Add tags to time entries",
+            "description": "Apply one or more tags to one or more time tracking entries in a single call. Tags are created automatically if they don't yet exist in the workspace's time-entry tag set. Use clickup_time_tags to list existing tags. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
                     "entry_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Time entry IDs to tag"
+                        "description": "IDs of the time entries to tag. Obtain from clickup_time_list (field: id)."
                     },
                     "tag_names": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Tag names to add"
+                        "description": "Tag names to apply. Created if they don't exist in the workspace's tag set."
                     }
                 },
                 "required": ["entry_ids", "tag_names"]
@@ -1616,20 +1616,20 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_time_remove_tags",
-            "description": "Remove tags from time entries",
+            "description": "Detach one or more tags from one or more time tracking entries in a single call. The tag definitions themselves remain in the workspace. No-op for entries not currently carrying the tag. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
                     "entry_ids": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Time entry IDs to untag"
+                        "description": "IDs of the time entries to untag. Obtain from clickup_time_list (field: id)."
                     },
                     "tag_names": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Tag names to remove"
+                        "description": "Tag names to remove. Obtain from clickup_time_tags (field: name)."
                     }
                 },
                 "required": ["entry_ids", "tag_names"]
@@ -1637,80 +1637,80 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_time_rename_tag",
-            "description": "Rename a time entry tag",
+            "description": "Rename a time-entry tag across the entire workspace. All historical time entries carrying the old name are updated. Cannot change colour via this endpoint. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "name": {"type": "string", "description": "Current tag name"},
-                    "new_name": {"type": "string", "description": "New tag name"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "name": {"type": "string", "description": "Current name of the tag to rename. Obtain from clickup_time_tags (field: name)."},
+                    "new_name": {"type": "string", "description": "Replacement name for the tag. Must not collide with an existing time-entry tag."}
                 },
                 "required": ["name", "new_name"]
             }
         },
         {
             "name": "clickup_time_history",
-            "description": "Get the history of changes for a time entry",
+            "description": "Fetch the audit history of edits made to a time tracking entry — every start/duration/description/billable change, the user who made it, and when. Useful for auditing. Returns an array of history event objects.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "timer_id": {"type": "string", "description": "Time entry ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "timer_id": {"type": "string", "description": "ID of the time entry. Obtain from clickup_time_list (field: id)."}
                 },
                 "required": ["timer_id"]
             }
         },
         {
             "name": "clickup_guest_invite",
-            "description": "Invite a guest to a workspace",
+            "description": "Invite a new external guest user to a ClickUp workspace by email. Guests have limited access and don't consume paid member seats (they use guest seats). The invitation email is sent automatically; the guest must accept before they can log in. Share specific items with them via clickup_guest_share_task / _share_list / _share_folder. Requires Enterprise plan. Returns the created guest object including its new id.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "email": {"type": "string", "description": "Guest email address"},
-                    "can_edit_tags": {"type": "boolean", "description": "Allow guest to edit tags"},
-                    "can_see_time_spent": {"type": "boolean", "description": "Allow guest to see time spent"},
-                    "can_create_views": {"type": "boolean", "description": "Allow guest to create views"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "email": {"type": "string", "description": "Email address to send the invitation to. Must be a valid email that isn't already a member or guest of the workspace."},
+                    "can_edit_tags": {"type": "boolean", "description": "true = allow the guest to create/rename/delete tags on items shared with them; false or omitted = tag management denied."},
+                    "can_see_time_spent": {"type": "boolean", "description": "true = allow the guest to see time-tracking data on shared tasks; false or omitted = hidden."},
+                    "can_create_views": {"type": "boolean", "description": "true = allow the guest to create their own saved views on shared items; false or omitted = cannot create views."}
                 },
                 "required": ["email"]
             }
         },
         {
             "name": "clickup_guest_update",
-            "description": "Update a guest's permissions in a workspace",
+            "description": "Update a ClickUp guest's workspace-wide capability flags (edit tags, see time spent, create views). Does not change which items are shared with them — use clickup_guest_share_* / _unshare_* for that. Requires Enterprise plan. Returns the updated guest object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "guest_id": {"type": "integer", "description": "Guest user ID"},
-                    "can_edit_tags": {"type": "boolean", "description": "Allow guest to edit tags"},
-                    "can_see_time_spent": {"type": "boolean", "description": "Allow guest to see time spent"},
-                    "can_create_views": {"type": "boolean", "description": "Allow guest to create views"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "guest_id": {"type": "integer", "description": "Numeric guest user ID. Obtain from clickup_guest_get or from clickup_guest_invite (response.id)."},
+                    "can_edit_tags": {"type": "boolean", "description": "true = allow the guest to manage tags on shared items; false = deny. Omit to keep current value."},
+                    "can_see_time_spent": {"type": "boolean", "description": "true = guest can see time-tracking on shared tasks; false = hidden. Omit to keep current value."},
+                    "can_create_views": {"type": "boolean", "description": "true = guest can create saved views; false = cannot. Omit to keep current value."}
                 },
                 "required": ["guest_id"]
             }
         },
         {
             "name": "clickup_guest_remove",
-            "description": "Remove a guest from a workspace",
+            "description": "Permanently revoke a guest user's access to a ClickUp workspace. All share-records for the guest are deleted and they can no longer log in. Destructive and irreversible — to re-invite, use clickup_guest_invite (a new guest_id will be assigned). Requires Enterprise plan. Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "guest_id": {"type": "integer", "description": "Guest user ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "guest_id": {"type": "integer", "description": "Numeric guest user ID to remove. Obtain from clickup_guest_get or clickup_guest_invite. All their shared-item access is revoked."}
                 },
                 "required": ["guest_id"]
             }
         },
         {
             "name": "clickup_guest_share_task",
-            "description": "Share a task with a guest",
+            "description": "Grant a ClickUp guest user access to a single task at a specified permission level. Scopes strictly to that task — subtasks and the parent list are not shared. Use clickup_guest_unshare_task to revoke. Requires Enterprise plan. Returns the updated guest object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "guest_id": {"type": "integer", "description": "Guest user ID"},
-                    "permission": {"type": "string", "description": "Permission level (read, comment, create, edit)"}
+                    "task_id": {"type": "string", "description": "ID of the task to share. Obtain from clickup_task_list (field: id) or clickup_task_search."},
+                    "guest_id": {"type": "integer", "description": "Numeric ID of the guest user. Obtain from clickup_guest_get or clickup_guest_invite (response.id)."},
+                    "permission": {"type": "string", "description": "Access level: 'read' (view only), 'comment' (view + comment), 'create' (comment + create subtasks), 'edit' (full edit rights on this task)."}
                 },
                 "required": ["task_id", "guest_id", "permission"]
             }
@@ -1729,102 +1729,102 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_guest_share_list",
-            "description": "Share a list with a guest",
+            "description": "Grant a ClickUp guest user access to a specific list at a chosen permission level. Guests are external collaborators (not paid workspace seats); this is how you scope what a guest can see/do. To revoke access later use clickup_guest_unshare_list. Requires Enterprise plan. Returns the updated guest object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"},
-                    "guest_id": {"type": "integer", "description": "Guest user ID"},
-                    "permission": {"type": "string", "description": "Permission level (read, comment, create, edit)"}
+                    "list_id": {"type": "string", "description": "ID of the list to share. Obtain from clickup_list_list (field: id)."},
+                    "guest_id": {"type": "integer", "description": "Numeric ID of the guest user. Obtain from clickup_guest_get or the response of clickup_guest_invite."},
+                    "permission": {"type": "string", "description": "Access level: 'read' (view only), 'comment' (view + comment), 'create' (comment + create tasks), 'edit' (full edit rights on existing items)."}
                 },
                 "required": ["list_id", "guest_id", "permission"]
             }
         },
         {
             "name": "clickup_guest_unshare_list",
-            "description": "Revoke a guest's access to a list",
+            "description": "Revoke a guest user's access to a specific list. The guest keeps any separate task-level or folder-level grants they may also have. Destructive in that the guest immediately loses access, but the guest account itself remains — re-share with clickup_guest_share_list. Requires Enterprise plan. Returns the updated guest object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID"},
-                    "guest_id": {"type": "integer", "description": "Guest user ID"}
+                    "list_id": {"type": "string", "description": "ID of the list whose access to revoke. Obtain from clickup_list_list (field: id)."},
+                    "guest_id": {"type": "integer", "description": "Numeric guest user ID. Obtain from clickup_guest_get or clickup_guest_invite."}
                 },
                 "required": ["list_id", "guest_id"]
             }
         },
         {
             "name": "clickup_guest_share_folder",
-            "description": "Share a folder with a guest",
+            "description": "Grant a ClickUp guest user access to an entire folder — including all its lists and tasks — at a specified permission level. Use clickup_guest_share_list or _share_task for narrower scope. Use clickup_guest_unshare_folder to revoke. Requires Enterprise plan. Returns the updated guest object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "folder_id": {"type": "string", "description": "Folder ID"},
-                    "guest_id": {"type": "integer", "description": "Guest user ID"},
-                    "permission": {"type": "string", "description": "Permission level (read, comment, create, edit)"}
+                    "folder_id": {"type": "string", "description": "ID of the folder to share. Obtain from clickup_folder_list (field: id). All descendant lists and tasks are accessible via this grant."},
+                    "guest_id": {"type": "integer", "description": "Numeric ID of the guest user. Obtain from clickup_guest_get or clickup_guest_invite (response.id)."},
+                    "permission": {"type": "string", "description": "Access level applied to every descendant: 'read' (view only), 'comment' (view + comment), 'create' (comment + create tasks), 'edit' (full edit rights)."}
                 },
                 "required": ["folder_id", "guest_id", "permission"]
             }
         },
         {
             "name": "clickup_guest_unshare_folder",
-            "description": "Revoke a guest's access to a folder",
+            "description": "Revoke a guest user's access to a folder (and, cascading, to every list and task under it granted via the folder). Separate list-level or task-level grants are preserved. Re-share later with clickup_guest_share_folder. Requires Enterprise plan. Returns the updated guest object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "folder_id": {"type": "string", "description": "Folder ID"},
-                    "guest_id": {"type": "integer", "description": "Guest user ID"}
+                    "folder_id": {"type": "string", "description": "ID of the folder whose access to revoke. Obtain from clickup_folder_list (field: id)."},
+                    "guest_id": {"type": "integer", "description": "Numeric guest user ID. Obtain from clickup_guest_get or clickup_guest_invite."}
                 },
                 "required": ["folder_id", "guest_id"]
             }
         },
         {
             "name": "clickup_user_invite",
-            "description": "Invite a user to a workspace",
+            "description": "Invite a new paid member to a ClickUp workspace by email. Consumes a member seat (see clickup_workspace_seats for availability). For external collaborators who shouldn't have full access, use clickup_guest_invite instead. Returns the created user object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "email": {"type": "string", "description": "User email address"},
-                    "admin": {"type": "boolean", "description": "Grant admin role"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "email": {"type": "string", "description": "Email address to send the invitation to. Must be a valid email not already a member or guest of the workspace."},
+                    "admin": {"type": "boolean", "description": "true = grant the Admin role (can manage settings, billing, users); false or omitted = standard Member role."}
                 },
                 "required": ["email"]
             }
         },
         {
             "name": "clickup_user_update",
-            "description": "Update a workspace member's role or username",
+            "description": "Update a ClickUp workspace member's username and/or admin role. Only the authenticated user (if self) or a workspace admin can call this. To change per-item permissions use role-based or share endpoints instead. Returns the updated user object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "user_id": {"type": "integer", "description": "User ID"},
-                    "username": {"type": "string", "description": "New username"},
-                    "admin": {"type": "boolean", "description": "Grant or revoke admin role"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "user_id": {"type": "integer", "description": "Numeric user ID to update. Obtain from clickup_member_list or clickup_user_get (field: id)."},
+                    "username": {"type": "string", "description": "New display name. Omit to keep current username."},
+                    "admin": {"type": "boolean", "description": "true = grant Admin role, false = revoke Admin (revert to Member). Omit to keep current role."}
                 },
                 "required": ["user_id"]
             }
         },
         {
             "name": "clickup_user_remove",
-            "description": "Remove a user from a workspace",
+            "description": "Remove a member from a ClickUp workspace, freeing their paid seat. Destructive — their assignments and comments are preserved as historical records but they lose access immediately. To re-add, use clickup_user_invite (a new invitation will be sent). Returns an empty object on success.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "user_id": {"type": "integer", "description": "User ID"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "user_id": {"type": "integer", "description": "Numeric user ID to remove. Obtain from clickup_member_list (field: id). Cannot remove the workspace Owner."}
                 },
                 "required": ["user_id"]
             }
         },
         {
             "name": "clickup_template_apply_task",
-            "description": "Create a task from a task template",
+            "description": "Create a new task in a list by instantiating a saved task template. The new task inherits the template's description, checklists, subtasks, custom fields, etc., but uses the supplied name. Use clickup_template_list to discover templates. Returns the created task object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "list_id": {"type": "string", "description": "List ID to create the task in"},
-                    "template_id": {"type": "string", "description": "Template ID"},
-                    "name": {"type": "string", "description": "Task name"}
+                    "list_id": {"type": "string", "description": "ID of the list to create the task in. Obtain from clickup_list_list (field: id)."},
+                    "template_id": {"type": "string", "description": "ID of the task template to instantiate. Obtain from clickup_template_list (field: id)."},
+                    "name": {"type": "string", "description": "Name for the newly-created task. Overrides the template's default name."}
                 },
                 "required": ["list_id", "template_id", "name"]
             }
@@ -1845,78 +1845,78 @@ fn tool_list() -> Value {
         },
         {
             "name": "clickup_template_apply_folder",
-            "description": "Create a folder from a folder template in a space",
+            "description": "Create a new folder in a space by instantiating a saved folder template. The new folder inherits the template's list structure, statuses, default fields, and other presets, using the supplied name. Use clickup_template_list to discover templates. Returns the created folder object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "space_id": {"type": "string", "description": "Space ID"},
-                    "template_id": {"type": "string", "description": "Template ID"},
-                    "name": {"type": "string", "description": "New folder name"}
+                    "space_id": {"type": "string", "description": "ID of the parent space. Obtain from clickup_space_list (field: id)."},
+                    "template_id": {"type": "string", "description": "ID of the folder template to instantiate. Obtain from clickup_template_list (field: id)."},
+                    "name": {"type": "string", "description": "Name for the newly-created folder. Must be unique within the parent space."}
                 },
                 "required": ["space_id", "template_id", "name"]
             }
         },
         {
             "name": "clickup_attachment_upload",
-            "description": "Upload a file as an attachment to a task",
+            "description": "Upload a local file as an attachment on a ClickUp task. The file is read from disk, posted as multipart/form-data, and stored on ClickUp's CDN. Use clickup_attachment_list to see attachments afterward. Returns the created attachment object (id, title, size, url).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "task_id": {"type": "string", "description": "Task ID"},
-                    "file_path": {"type": "string", "description": "Absolute path to the file to upload"}
+                    "task_id": {"type": "string", "description": "ID of the task to attach the file to. Obtain from clickup_task_list (field: id)."},
+                    "file_path": {"type": "string", "description": "Absolute path to a readable file on the server running this MCP. The filename (basename) is used as the attachment title; size limits apply per workspace plan."}
                 },
                 "required": ["task_id", "file_path"]
             }
         },
         {
             "name": "clickup_task_type_list",
-            "description": "List custom task types (custom items) for a workspace",
+            "description": "List the custom task types (ClickUp 'Custom Items' — e.g. Bug, Epic, Feature) defined at the workspace level. Each has an id, name, and icon and can be chosen when creating tasks. Returns an array of custom item type objects.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."}
                 },
                 "required": []
             }
         },
         {
             "name": "clickup_doc_get_page",
-            "description": "Get a specific page from a doc",
+            "description": "Fetch a single page from a ClickUp doc including its full markdown content, title, subtitle, and parent-page link. Use clickup_doc_pages to list all pages in a doc first. Returns the page object with content.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "doc_id": {"type": "string", "description": "Doc ID"},
-                    "page_id": {"type": "string", "description": "Page ID"}
+                    "doc_id": {"type": "string", "description": "ID of the parent doc. Obtain from clickup_doc_list (field: id)."},
+                    "page_id": {"type": "string", "description": "ID of the page to fetch. Obtain from clickup_doc_pages (field: id)."}
                 },
                 "required": ["doc_id", "page_id"]
             }
         },
         {
             "name": "clickup_audit_log_query",
-            "description": "Query the audit log for a workspace",
+            "description": "Query the ClickUp audit log (who did what, when) for a workspace — filter by event type, acting user, and date range. Requires Enterprise plan. Uses v3 cursor pagination. Returns an array of audit event objects (actor, event, target, timestamp).",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "type": {"type": "string", "description": "Audit log event type"},
-                    "user_id": {"type": "integer", "description": "Filter by user ID"},
-                    "start_date": {"type": "integer", "description": "Start date as Unix timestamp (milliseconds)"},
-                    "end_date": {"type": "integer", "description": "End date as Unix timestamp (milliseconds)"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "type": {"type": "string", "description": "Audit event type filter (e.g. 'task_created', 'user_added', 'permission_changed'). Required. See ClickUp docs for the full list."},
+                    "user_id": {"type": "integer", "description": "Restrict to events performed by this user ID. Obtain from clickup_member_list. Omit for all users."},
+                    "start_date": {"type": "integer", "description": "Inclusive lower bound as a Unix timestamp in milliseconds (e.g. 1735689600000 for 2025-01-01). Omit for no lower bound."},
+                    "end_date": {"type": "integer", "description": "Inclusive upper bound as a Unix timestamp in milliseconds. Omit for no upper bound."}
                 },
                 "required": ["type"]
             }
         },
         {
             "name": "clickup_acl_update",
-            "description": "Update access control (privacy) for a workspace object",
+            "description": "Change the privacy (ACL) of a ClickUp hierarchy object — make a space/folder/list private (explicit members only) or public (whole workspace). Uses the v3 ACL endpoint. Requires Enterprise plan. Returns the updated object.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "team_id": {"type": "string", "description": "Workspace (team) ID. Omit to use the default workspace from config."},
-                    "object_type": {"type": "string", "description": "Object type (e.g. space, folder, list)"},
-                    "object_id": {"type": "string", "description": "Object ID"},
-                    "private": {"type": "boolean", "description": "Set to true to make private, false to make public"}
+                    "team_id": {"type": "string", "description": "Workspace (team) ID. Obtain from clickup_workspace_list (field: id). Omit to use the default workspace from config."},
+                    "object_type": {"type": "string", "description": "Type of object to change: 'space', 'folder', or 'list'."},
+                    "object_id": {"type": "string", "description": "ID of the space/folder/list. Obtain from the matching list endpoint (clickup_space_list, clickup_folder_list, or clickup_list_list)."},
+                    "private": {"type": "boolean", "description": "true = make the object private (only explicit members see it); false = make it public (visible to the whole workspace)."}
                 },
                 "required": ["object_type", "object_id"]
             }
