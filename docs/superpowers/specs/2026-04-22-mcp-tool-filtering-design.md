@@ -42,39 +42,39 @@ Classification uses **auto-derivation from the tool name**, with a small overrid
 Applied in order:
 
 1. Look up `tool_name` in `OVERRIDES`. If found, return that entry.
-2. Strip the `clickup_` prefix and split on `_`. First segment is `group`. Verb is inferred from the remaining segments:
-   - If the trailing segment is in the destructive verb set → `Destructive`.
-   - Else if it starts with / contains a write verb → `Write`.
-   - Else → `Read`.
+2. Strip the `clickup_` prefix and split on `_`. First segment is `group`. Remaining segments form the verb portion.
+3. Scan the verb segments. Class is decided by the highest-priority verb found, with priority `Destructive > Write > Read`:
+   - If any segment matches a destructive verb → `Destructive`.
+   - Else if any segment matches a write verb → `Write`.
+   - Else if any segment matches a read verb → `Read`.
+   - Else → classification fails and the self-check panics in debug builds, forcing an override entry.
+
+Scanning all segments (not just the trailing one) matters because ClickUp names like `task_add_dep`, `task_remove_tag`, `checklist_delete_item`, and `list_add_task` carry the verb before a noun. Priority order ensures that `goal_delete_kr` classifies as `Destructive` even though `kr` is the trailing segment.
 
 **Verb sets:**
 
-- **Read verbs:** `list`, `get`, `search`, `current`, `pages`, `followers`, `members`, `history`, `tags`, `whoami`, `check`, `plan`, `seats`, `replies`, `tagged_users`, `time_in_status`
-- **Write verbs:** `create`, `update`, `set`, `add`, `start`, `stop`, `move`, `apply`, `invite`, `rename`, `share`, `attach`, `link`, `reply`, `send`, `page`, `dm`, `edit`
+- **Read verbs:** `list`, `get`, `search`, `current`, `pages`, `followers`, `members`, `history`, `tags`, `whoami`, `check`, `replies`, `tagged`
+- **Write verbs:** `create`, `update`, `set`, `add`, `start`, `stop`, `move`, `apply`, `invite`, `rename`, `share`, `attach`, `link`, `reply`, `send`, `page`, `dm`, `edit`, `upload`
 - **Destructive verbs:** `delete`, `remove`, `unshare`, `unlink`, `unset`
 
 #### Override table
 
-A `const OVERRIDES: &[(&str, Class, &str)]` handles exceptions where the naming convention breaks down. Initial entries:
+A `const OVERRIDES: &[(&str, Class, &str)]` handles tools that don't fit the convention (no group segment, or a verb that isn't in any set). Initial entries:
 
 | Tool | Class | Group | Reason |
 |------|-------|-------|--------|
 | `clickup_search` | Read | `workspace` | No group segment; workspace-wide search |
 | `clickup_whoami` | Read | `auth` | No group segment |
-| `clickup_auth_check` | Read | `auth` | `check` not in default read verbs |
-| `clickup_workspace_plan` | Read | `workspace` | `plan` ambiguous |
-| `clickup_workspace_seats` | Read | `workspace` | `seats` ambiguous |
-| `clickup_workspace_list` | Read | `workspace` | Standard, but listed for completeness |
-| `clickup_task_replace_estimates` | Write | `task` | "replace" reads as destructive but overwrites in place |
-| `clickup_list_add_task` | Write | `list` | Two-word verb split |
-| `clickup_list_remove_task` | Destructive | `list` | Two-word verb split |
-| `clickup_goal_add_kr` / `_update_kr` / `_delete_kr` | Write / Write / Destructive | `goal` | Suffix after verb |
+| `clickup_workspace_plan` | Read | `workspace` | `plan` too generic to add to read verbs |
+| `clickup_workspace_seats` | Read | `workspace` | `seats` too generic to add to read verbs |
+| `clickup_task_replace_estimates` | Write | `task` | `replace` reads as destructive but overwrites in place |
+| `clickup_task_time_in_status` | Read | `task` | No segment matches a verb |
 
 The override table is the escape hatch for any tool that doesn't fit the convention. New tools should follow the convention and not need entries.
 
 #### Classification self-check
 
-In debug builds, `serve()` runs a startup assertion: iterate the full tool list, call `classify()` on each name, panic if any tool fails to classify or produces an unknown group. This catches tools added without considering classification before they ship to users.
+A unit test iterates every name in `tool_list()`, calls `classify()` on each, and asserts that (a) classification succeeds and (b) the returned group is one of the 28 known groups. This runs in both debug and release test runs, so any new tool that breaks the convention fails CI before it ships. `serve()` also runs the same check in debug builds as a belt-and-braces guard.
 
 ### 2. Filter configuration
 
@@ -177,6 +177,6 @@ New `tests/test_mcp_filter.rs`:
 
 ## Risks and open questions
 
-- **Classification drift.** New tools added without considering class/group will be silently misclassified by the auto-deriver. Mitigated by the debug-build self-check on `serve()` startup. Worth adding a CI test that runs the self-check in release too, or at least runs it against `tool_list()` in the test suite.
+- **Classification drift.** New tools added without considering class/group will be silently misclassified by the auto-deriver. Mitigated by the classification self-check unit test described above, which fails CI if any tool fails to classify.
 - **Version alignment.** npm has been drifting behind crates.io (0.6.7 vs 0.7.0). This release aligns both at 0.8.0; future releases should keep them in lockstep.
 - **Config-file filtering.** Intentionally not adding `[mcp]` section to `.clickup.toml` / global config in this release. Flags + env vars are enough, and adding a third config surface is scope creep. Easy to layer on later.
