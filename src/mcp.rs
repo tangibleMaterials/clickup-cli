@@ -4,6 +4,9 @@ use crate::output::compact_items;
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+pub mod classify;
+pub mod filter;
+
 // ── JSON-RPC helpers ──────────────────────────────────────────────────────────
 
 fn ok_response(id: &Value, result: Value) -> Value {
