@@ -212,3 +212,15 @@ fn unknown_tool_errors_with_hint() {
         other => panic!("expected UnknownTool, got {:?}", other),
     }
 }
+
+#[test]
+fn read_only_plus_profile_read_is_not_a_conflict() {
+    // Setting both to the same effective value should harmonize, not error.
+    let raw = RawFilter {
+        profile: Some("read".into()),
+        read_only: true,
+        ..RawFilter::default()
+    };
+    let filter = Filter::resolve(raw).unwrap();
+    assert_eq!(filter.profile, Profile::Read);
+}

@@ -35,6 +35,14 @@ impl Profile {
             (Profile::Safe, _) => true,
         }
     }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Profile::All => "all",
+            Profile::Read => "read",
+            Profile::Safe => "safe",
+        }
+    }
 }
 
 /// Raw filter inputs before validation.
@@ -116,11 +124,7 @@ impl Filter {
             (Some("read"), true) => Profile::Read,
             (Some(p), true) => return Err(FilterError::ConflictingProfile { profile: p.into() }),
         };
-        let profile_label = match profile {
-            Profile::All => "all",
-            Profile::Read => "read",
-            Profile::Safe => "safe",
-        };
+        let profile_label = profile.as_str();
 
         // 2. Validate group inputs.
         for list in [&raw.groups, &raw.exclude_groups] {
@@ -234,9 +238,10 @@ impl Filter {
 fn closest_name(needle: &str, haystack: &HashSet<&str>) -> Option<String> {
     haystack
         .iter()
-        .min_by_key(|candidate| levenshtein(needle, candidate))
-        .filter(|candidate| levenshtein(needle, candidate) <= 3)
-        .map(|s| s.to_string())
+        .map(|c| (c, levenshtein(needle, c)))
+        .min_by_key(|&(_, d)| d)
+        .filter(|&(_, d)| d <= 3)
+        .map(|(s, _)| s.to_string())
 }
 
 fn levenshtein(a: &str, b: &str) -> usize {
