@@ -1927,6 +1927,19 @@ pub fn tool_list() -> Value {
     ])
 }
 
+/// Returns `tool_list()` with any tool the filter disallows removed.
+pub fn filtered_tool_list(filter: &filter::Filter) -> serde_json::Value {
+    let all = tool_list();
+    let mut array = all.as_array().cloned().unwrap_or_default();
+    array.retain(|tool| {
+        tool.get("name")
+            .and_then(|v| v.as_str())
+            .map(|n| filter.allows(n))
+            .unwrap_or(false)
+    });
+    serde_json::Value::Array(array)
+}
+
 // ── Tool execution ────────────────────────────────────────────────────────────
 
 async fn call_tool(
@@ -3632,7 +3645,7 @@ async fn dispatch_tool(
 
 // ── Main server loop ──────────────────────────────────────────────────────────
 
-pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn serve(filter: filter::Filter) -> Result<(), Box<dyn std::error::Error>> {
     // Resolve token: CLICKUP_TOKEN env > config file
     let token = std::env::var("CLICKUP_TOKEN")
         .ok()
@@ -3698,19 +3711,22 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
                 )
             }
 
-            "tools/list" => ok_response(&id, json!({"tools": tool_list()})),
+            "tools/list" => ok_response(&id, json!({"tools": filtered_tool_list(&filter)})),
 
             "tools/call" => {
                 let params = msg.get("params").cloned().unwrap_or(json!({}));
-                let tool_name = params
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
                 let arguments = params.get("arguments").cloned().unwrap_or(json!({}));
 
                 if tool_name.is_empty() {
                     let result = tool_error("Missing tool name".to_string());
                     ok_response(&id, result)
+                } else if !filter.allows(tool_name) {
+                    error_response(
+                        &id,
+                        -32601,
+                        &format!("Method not found: {} (filtered out at startup)", tool_name),
+                    )
                 } else {
                     let result = call_tool(tool_name, &arguments, &client, &workspace_id).await;
                     ok_response(&id, result)

@@ -224,3 +224,18 @@ fn read_only_plus_profile_read_is_not_a_conflict() {
     let filter = Filter::resolve(raw).unwrap();
     assert_eq!(filter.profile, Profile::Read);
 }
+
+use clickup_cli::mcp::filtered_tool_list;
+
+#[test]
+fn filtered_tool_list_returns_only_allowed_tools() {
+    let raw = RawFilter { profile: Some("read".into()), ..RawFilter::default() };
+    let filter = Filter::resolve(raw).unwrap();
+    let value = filtered_tool_list(&filter);
+    let array = value.as_array().unwrap();
+    for tool in array {
+        let name = tool.get("name").unwrap().as_str().unwrap();
+        assert!(filter.allows(name), "tool {} leaked past filter", name);
+    }
+    assert_eq!(array.len(), filter.allowed_count());
+}

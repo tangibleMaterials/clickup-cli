@@ -10,7 +10,11 @@ pub enum McpCommands {
 pub async fn execute(command: McpCommands) -> Result<(), CliError> {
     match command {
         McpCommands::Serve => {
-            crate::mcp::serve()
+            let filter = crate::mcp::filter::Filter::resolve(
+                crate::mcp::filter::RawFilter::default(),
+            )
+            .map_err(|e| CliError::ConfigError(e.to_string()))?;
+            crate::mcp::serve(filter)
                 .await
                 .map_err(|e| CliError::ConfigError(e.to_string()))
         }
