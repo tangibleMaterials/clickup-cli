@@ -27,7 +27,7 @@ fn tool_error(msg: String) -> Value {
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
-fn tool_list() -> Value {
+pub fn tool_list() -> Value {
     json!([
         {
             "name": "clickup_whoami",
