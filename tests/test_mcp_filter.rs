@@ -47,3 +47,168 @@ fn expected_tool_count() {
     let array = tools.as_array().unwrap();
     assert_eq!(array.len(), 143, "tool count changed; update this test");
 }
+
+use clickup_cli::mcp::filter::{Filter, FilterError, Profile, RawFilter};
+
+fn tool_names_in(filter: &Filter) -> Vec<String> {
+    let tools = tool_list();
+    let array = tools.as_array().unwrap();
+    array
+        .iter()
+        .filter_map(|t| t.get("name").and_then(|v| v.as_str()).map(str::to_string))
+        .filter(|n| filter.allows(n))
+        .collect()
+}
+
+#[test]
+fn default_exposes_all_tools() {
+    let filter = Filter::resolve(RawFilter::default()).unwrap();
+    assert_eq!(filter.profile, Profile::All);
+    assert_eq!(tool_names_in(&filter).len(), 143);
+}
+
+#[test]
+fn read_profile_excludes_writes_and_destructives() {
+    let raw = RawFilter { profile: Some("read".into()), ..RawFilter::default() };
+    let filter = Filter::resolve(raw).unwrap();
+    let names = tool_names_in(&filter);
+    assert!(names.iter().all(|n| {
+        use clickup_cli::mcp::classify::{classify, Class};
+        classify(n).map(|m| m.class == Class::Read).unwrap_or(false)
+    }));
+    assert!(names.contains(&"clickup_task_list".to_string()));
+    assert!(!names.contains(&"clickup_task_delete".to_string()));
+    assert!(!names.contains(&"clickup_task_create".to_string()));
+}
+
+#[test]
+fn safe_profile_excludes_destructives_only() {
+    let raw = RawFilter { profile: Some("safe".into()), ..RawFilter::default() };
+    let filter = Filter::resolve(raw).unwrap();
+    let names = tool_names_in(&filter);
+    assert!(names.contains(&"clickup_task_create".to_string()));
+    assert!(!names.contains(&"clickup_task_delete".to_string()));
+    assert!(!names.contains(&"clickup_list_remove_task".to_string()));
+}
+
+#[test]
+fn read_only_flag_equivalent_to_profile_read() {
+    let raw = RawFilter { read_only: true, ..RawFilter::default() };
+    let filter = Filter::resolve(raw).unwrap();
+    assert_eq!(filter.profile, Profile::Read);
+}
+
+#[test]
+fn groups_filter_restricts_to_listed_groups() {
+    let raw = RawFilter {
+        groups: Some(vec!["task".into(), "comment".into()]),
+        ..RawFilter::default()
+    };
+    let filter = Filter::resolve(raw).unwrap();
+    let names = tool_names_in(&filter);
+    assert!(names.contains(&"clickup_task_get".to_string()));
+    assert!(names.contains(&"clickup_comment_list".to_string()));
+    assert!(!names.contains(&"clickup_chat_channel_list".to_string()));
+    // group "task-type" is NOT in "task" — confirm the `task_type_list` tool is NOT included
+    assert!(!names.contains(&"clickup_task_type_list".to_string()));
+}
+
+#[test]
+fn exclude_groups_drops_listed_groups() {
+    let raw = RawFilter {
+        exclude_groups: Some(vec!["chat".into(), "audit-log".into()]),
+        ..RawFilter::default()
+    };
+    let filter = Filter::resolve(raw).unwrap();
+    let names = tool_names_in(&filter);
+    assert!(!names.iter().any(|n| n.starts_with("clickup_chat_")));
+    assert!(!names.iter().any(|n| n.starts_with("clickup_audit_log_")));
+    assert!(names.contains(&"clickup_task_list".to_string()));
+}
+
+#[test]
+fn tools_filter_intersects_with_profile() {
+    let raw = RawFilter {
+        profile: Some("read".into()),
+        tools: Some(vec!["clickup_task_get".into(), "clickup_task_list".into()]),
+        ..RawFilter::default()
+    };
+    let filter = Filter::resolve(raw).unwrap();
+    let names = tool_names_in(&filter);
+    assert_eq!(names.len(), 2);
+}
+
+#[test]
+fn tool_excluded_by_profile_errors() {
+    let raw = RawFilter {
+        profile: Some("read".into()),
+        tools: Some(vec!["clickup_task_delete".into()]),
+        ..RawFilter::default()
+    };
+    let err = Filter::resolve(raw).unwrap_err();
+    assert!(matches!(err, FilterError::ToolExcludedByProfile { .. }));
+}
+
+#[test]
+fn exclude_tools_drops_them() {
+    let raw = RawFilter {
+        exclude_tools: Some(vec!["clickup_task_delete".into()]),
+        ..RawFilter::default()
+    };
+    let filter = Filter::resolve(raw).unwrap();
+    let names = tool_names_in(&filter);
+    assert!(!names.contains(&"clickup_task_delete".to_string()));
+    assert!(names.contains(&"clickup_task_create".to_string()));
+}
+
+#[test]
+fn empty_final_set_errors() {
+    let raw = RawFilter {
+        groups: Some(vec!["task".into()]),
+        exclude_groups: Some(vec!["task".into()]),
+        ..RawFilter::default()
+    };
+    let err = Filter::resolve(raw).unwrap_err();
+    assert!(matches!(err, FilterError::EmptyFilter));
+}
+
+#[test]
+fn read_only_plus_non_read_profile_errors() {
+    let raw = RawFilter {
+        profile: Some("safe".into()),
+        read_only: true,
+        ..RawFilter::default()
+    };
+    let err = Filter::resolve(raw).unwrap_err();
+    assert!(matches!(err, FilterError::ConflictingProfile { .. }));
+}
+
+#[test]
+fn unknown_profile_errors() {
+    let raw = RawFilter { profile: Some("gibberish".into()), ..RawFilter::default() };
+    let err = Filter::resolve(raw).unwrap_err();
+    assert!(matches!(err, FilterError::UnknownProfile { .. }));
+}
+
+#[test]
+fn unknown_group_errors() {
+    let raw = RawFilter { groups: Some(vec!["nope".into()]), ..RawFilter::default() };
+    let err = Filter::resolve(raw).unwrap_err();
+    assert!(matches!(err, FilterError::UnknownGroup { .. }));
+}
+
+#[test]
+fn unknown_tool_errors_with_hint() {
+    let raw = RawFilter {
+        tools: Some(vec!["clickup_task_lst".into()]),
+        ..RawFilter::default()
+    };
+    let err = Filter::resolve(raw).unwrap_err();
+    match err {
+        FilterError::UnknownTool { name, suggestion } => {
+            assert_eq!(name, "clickup_task_lst");
+            assert_eq!(suggestion.as_deref(), Some("clickup_task_list"));
+        }
+        other => panic!("expected UnknownTool, got {:?}", other),
+    }
+}
