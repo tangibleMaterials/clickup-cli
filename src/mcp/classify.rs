@@ -75,8 +75,10 @@ const OVERRIDES: &[(&str, Class, &str)] = &[
     ("clickup_task_time_in_status",    Class::Read,  "task"),
     ("clickup_time_tags",              Class::Read,  "time"),
     ("clickup_template_apply_list",    Class::Write, "template"),
-    ("clickup_doc_page",               Class::Read,  "doc"),
+    ("clickup_doc_get_page",           Class::Read,  "doc"),
     ("clickup_chat_tagged_users",      Class::Read,  "chat"),
+    ("clickup_view_tasks",             Class::Read,  "view"),
+    ("clickup_guest_share_list",       Class::Write, "guest"),
 ];
 
 pub fn classify(tool_name: &str) -> Option<ToolMeta> {
