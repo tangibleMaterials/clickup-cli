@@ -1,6 +1,7 @@
 //! Integration tests for MCP tool classification and filtering.
 
 use clickup_cli::mcp::classify::{classify, ALL_GROUPS};
+use clickup_cli::mcp::filtered_tool_list;
 use clickup_cli::mcp::tool_list;
 
 #[test]
@@ -225,8 +226,6 @@ fn read_only_plus_profile_read_is_not_a_conflict() {
     assert_eq!(filter.profile, Profile::Read);
 }
 
-use clickup_cli::mcp::filtered_tool_list;
-
 #[test]
 fn filtered_tool_list_returns_only_allowed_tools() {
     let raw = RawFilter { profile: Some("read".into()), ..RawFilter::default() };
@@ -238,4 +237,10 @@ fn filtered_tool_list_returns_only_allowed_tools() {
         assert!(filter.allows(name), "tool {} leaked past filter", name);
     }
     assert_eq!(array.len(), filter.allowed_count());
+    assert!(
+        !array
+            .iter()
+            .any(|t| t.get("name").and_then(|v| v.as_str()) == Some("clickup_task_delete")),
+        "destructive tool leaked into read-profile filtered list"
+    );
 }

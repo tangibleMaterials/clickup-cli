@@ -1930,14 +1930,21 @@ pub fn tool_list() -> Value {
 /// Returns `tool_list()` with any tool the filter disallows removed.
 pub fn filtered_tool_list(filter: &filter::Filter) -> serde_json::Value {
     let all = tool_list();
-    let mut array = all.as_array().cloned().unwrap_or_default();
-    array.retain(|tool| {
-        tool.get("name")
-            .and_then(|v| v.as_str())
-            .map(|n| filter.allows(n))
-            .unwrap_or(false)
-    });
-    serde_json::Value::Array(array)
+    let filtered: Vec<serde_json::Value> = all
+        .as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter(|tool| {
+                    tool.get("name")
+                        .and_then(|v| v.as_str())
+                        .map(|n| filter.allows(n))
+                        .unwrap_or(false)
+                })
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_default();
+    serde_json::Value::Array(filtered)
 }
 
 // ── Tool execution ────────────────────────────────────────────────────────────
