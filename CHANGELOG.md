@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-04-23
+
+### Added
+- `clickup mcp serve` now accepts filtering flags so the MCP server can expose a subset of its 143 tools at startup:
+  - `--profile <all|read|safe>` (default `all`): `read` exposes only read-class tools; `safe` excludes destructive tools.
+  - `--read-only` shortcut for `--profile read`.
+  - `--groups` / `--exclude-groups` to include or drop resource groups (e.g. `task,comment,time`).
+  - `--tools` / `--exclude-tools` to include or drop individual tools by exact name.
+  - Matching environment variables: `CLICKUP_MCP_PROFILE`, `CLICKUP_MCP_READ_ONLY`, `CLICKUP_MCP_GROUPS`, `CLICKUP_MCP_EXCLUDE_GROUPS`, `CLICKUP_MCP_TOOLS`, `CLICKUP_MCP_EXCLUDE_TOOLS`.
+- Filters apply to both `tools/list` (shrinks the LLM's context) and `tools/call` (rejects filtered tools with JSON-RPC `-32601`), so filtering is an access-control guarantee, not just a context optimization.
+- Startup log line on stderr summarizing the active filter, e.g. `MCP: profile=read, exposing 52/143 tools`.
+- Internal tool classifier mapping every MCP tool to a `(class, group)` pair with a CI self-check that fails if a tool can't be classified.
+
 ### Fixed
 - Release workflow (`.github/workflows/build.yml`): `cargo publish` now runs with `--allow-dirty` (build artifacts in the workspace were making the tree "dirty") and all three publish steps (crates.io, npm, GitHub Packages) now check whether the version already exists before publishing and fail hard on any other error. The previous `|| echo "skipped"` pattern silently swallowed the crates.io failure during the v0.7.0 release.
 
@@ -36,5 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.6.7...v0.7.0
