@@ -3673,6 +3673,25 @@ pub async fn serve(filter: filter::Filter) -> Result<(), Box<dyn std::error::Err
     let reader = BufReader::new(stdin);
     let mut lines = reader.lines();
 
+    let groups_str = filter
+        .groups
+        .as_ref()
+        .map(|g| format!(", groups=[{}]", g.join(",")))
+        .unwrap_or_default();
+    let excluded_groups_str = filter
+        .exclude_groups
+        .as_ref()
+        .map(|g| format!(", exclude-groups=[{}]", g.join(",")))
+        .unwrap_or_default();
+    eprintln!(
+        "MCP: profile={}{}{}, exposing {}/{} tools",
+        filter.profile.as_str(),
+        groups_str,
+        excluded_groups_str,
+        filter.allowed_count(),
+        tool_list().as_array().map(Vec::len).unwrap_or(0),
+    );
+
     while let Some(line) = lines.next_line().await? {
         let line = line.trim().to_string();
         if line.is_empty() {
