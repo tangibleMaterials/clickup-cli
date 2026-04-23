@@ -561,8 +561,8 @@ clickup status
 clickup-cli v{{ site.version }}
 
 Config:    ~/.config/clickup-cli/config.toml
-Token:     pk_441...RB4Y
-Workspace: 2648001
+Token:     pk_abc...wxyz
+Workspace: 1234567
 ```
 
 ---

@@ -175,7 +175,7 @@ API Token (get one at Settings > Apps): pk_****
 Validating... ✓ Authenticated as Nick Bester
 
 Fetching workspaces...
-  [1] Sparkland Trading (ID: 2648001)
+  [1] Acme Corp (ID: 1234567)
 
 Only one workspace found — setting as default.
 Config saved to ~/.config/clickup-cli/config.toml
@@ -213,7 +213,7 @@ Error: Not configured
 token = "pk_12345..."
 
 [defaults]
-workspace_id = "2648001"
+workspace_id = "1234567"
 output = "table"          # optional default output mode
 ```
 

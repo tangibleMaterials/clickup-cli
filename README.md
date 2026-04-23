@@ -355,8 +355,8 @@ clickup status
 clickup-cli vX.Y.Z
 
 Config:    ~/.config/clickup-cli/config.toml
-Token:     pk_441...RB4Y
-Workspace: 2648001
+Token:     pk_abc...wxyz
+Workspace: 1234567
 ```
 
 ## Shell Completions
