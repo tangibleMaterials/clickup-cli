@@ -558,7 +558,7 @@ clickup status
 ```
 
 ```
-clickup-cli v0.8.2
+clickup-cli v{{ site.version }}
 
 Config:    ~/.config/clickup-cli/config.toml
 Token:     pk_441...RB4Y

@@ -51,7 +51,7 @@ For Alpine-based containers (LibreChat, distroless-ish images, minimal Docker la
 ```sh
 curl -L https://github.com/nicholasbester/clickup-cli/releases/latest/download/clickup-linux-x86_64-musl.tar.gz | tar xz
 mv clickup /usr/local/bin/
-clickup --version       # Should show: clickup 0.8.2
+clickup --version       # Should show: clickup {{ site.version }}
 ```
 
 Or inside a Dockerfile:
