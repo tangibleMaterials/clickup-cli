@@ -3,7 +3,7 @@
   "version": "0.8.2",
   "description": "CLI for the ClickUp API, optimized for AI agents",
   "license": "Apache-2.0",
-  "author": "Nick Bester <nick@odinside.tech> (https://github.com/nicholasbester)",
+  "author": "Nick Bester <1872093+nicholasbester@users.noreply.github.com> (https://github.com/nicholasbester)",
   "repository": {
     "type": "git",
     "url": "https://github.com/nicholasbester/clickup-cli"

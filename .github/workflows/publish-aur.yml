@@ -28,7 +28,7 @@ jobs:
           pkgname: clickup-cli-bin
           pkgbuild: packaging/aur/PKGBUILD
           commit_username: Nicholas Bester
-          commit_email: nick@odinside.tech
+          commit_email: 1872093+nicholasbester@users.noreply.github.com
           ssh_private_key: ${{ secrets.AUR_SSH_KEY }}
           commit_message: "Update to v${{ steps.ver.outputs.version }}"
           updpkgsums: true
