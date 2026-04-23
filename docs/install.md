@@ -63,6 +63,16 @@ RUN apk add --no-cache curl tar \
        | tar xz -C /usr/local/bin/
 ```
 
+## Arch Linux (AUR)
+
+```bash
+yay -S clickup-cli-bin
+# or
+paru -S clickup-cli-bin
+```
+
+`clickup-cli-bin` wraps the prebuilt x86_64 / aarch64 Linux binaries — no Rust toolchain required. Maintained in-sync with every release via GitHub Actions.
+
 ## Windows
 
 Download `clickup-windows-x86_64.zip` from the [latest release](https://github.com/nicholasbester/clickup-cli/releases/latest), extract, and add `clickup.exe` to your PATH.

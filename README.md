@@ -85,6 +85,16 @@ curl -L https://github.com/nicholasbester/clickup-cli/releases/latest/download/c
 mv clickup /usr/local/bin/
 ```
 
+### Arch Linux (AUR)
+
+```bash
+yay -S clickup-cli-bin
+# or
+paru -S clickup-cli-bin
+```
+
+`clickup-cli-bin` wraps the prebuilt Linux binaries — no Rust toolchain required. Auto-updated on every release.
+
 ### Windows
 
 Download `clickup-windows-x86_64.zip` from the [latest release](https://github.com/nicholasbester/clickup-cli/releases/latest), extract it, and add `clickup.exe` to your PATH.
