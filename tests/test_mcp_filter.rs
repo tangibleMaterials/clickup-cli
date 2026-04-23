@@ -244,3 +244,55 @@ fn filtered_tool_list_returns_only_allowed_tools() {
         "destructive tool leaked into read-profile filtered list"
     );
 }
+
+// ── handle_tools_call_early tests ────────────────────────────────────────────
+
+use clickup_cli::mcp::handle_tools_call_early;
+use serde_json::json;
+
+#[test]
+fn tools_call_rejects_filtered_tool_with_minus_32601() {
+    let raw = RawFilter { profile: Some("read".into()), ..RawFilter::default() };
+    let filter = Filter::resolve(raw).unwrap();
+
+    let id = json!(42);
+    let params = json!({ "name": "clickup_task_delete", "arguments": {} });
+    let response = handle_tools_call_early(&id, &params, &filter)
+        .expect("filtered tool should yield an early response");
+
+    assert_eq!(response["jsonrpc"], json!("2.0"));
+    assert_eq!(response["id"], json!(42));
+    assert_eq!(response["error"]["code"], json!(-32601));
+    let message = response["error"]["message"].as_str().unwrap();
+    assert!(message.contains("clickup_task_delete"));
+    assert!(message.contains("filtered out at startup"));
+    assert!(response.get("result").is_none(), "must be a JSON-RPC error, not a success");
+}
+
+#[test]
+fn tools_call_passes_through_allowed_tool() {
+    let raw = RawFilter::default();
+    let filter = Filter::resolve(raw).unwrap();
+
+    let id = json!(1);
+    let params = json!({ "name": "clickup_task_list", "arguments": {} });
+    let early = handle_tools_call_early(&id, &params, &filter);
+    assert!(early.is_none(), "allowed tool should proceed to call_tool");
+}
+
+#[test]
+fn tools_call_with_empty_name_returns_tool_error() {
+    let raw = RawFilter::default();
+    let filter = Filter::resolve(raw).unwrap();
+
+    let id = json!(7);
+    let params = json!({ "name": "" });
+    let response = handle_tools_call_early(&id, &params, &filter)
+        .expect("empty name should yield an early response");
+    // Empty name is returned as a successful JSON-RPC response whose payload is
+    // a tool_error — matching existing behavior.
+    assert_eq!(response["jsonrpc"], json!("2.0"));
+    assert_eq!(response["id"], json!(7));
+    assert!(response.get("result").is_some());
+    assert!(response.get("error").is_none());
+}

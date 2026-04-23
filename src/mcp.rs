@@ -25,6 +25,32 @@ fn tool_error(msg: String) -> Value {
     json!({"content":[{"type":"text","text":msg}],"isError":true})
 }
 
+/// Inspects a `tools/call` request and returns a JSON-RPC response when the
+/// request can be resolved WITHOUT executing the tool itself (missing tool
+/// name, or tool is filtered out). Returns `None` when the caller should
+/// proceed to invoke the tool.
+pub fn handle_tools_call_early(
+    id: &Value,
+    params: &Value,
+    filter: &filter::Filter,
+) -> Option<Value> {
+    let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+
+    if tool_name.is_empty() {
+        return Some(ok_response(id, tool_error("Missing tool name".to_string())));
+    }
+
+    if !filter.allows(tool_name) {
+        return Some(error_response(
+            id,
+            -32601,
+            &format!("Method not found: {} (filtered out at startup)", tool_name),
+        ));
+    }
+
+    None
+}
+
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
 pub fn tool_list() -> Value {
@@ -3741,19 +3767,14 @@ pub async fn serve(filter: filter::Filter) -> Result<(), Box<dyn std::error::Err
 
             "tools/call" => {
                 let params = msg.get("params").cloned().unwrap_or(json!({}));
-                let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                let arguments = params.get("arguments").cloned().unwrap_or(json!({}));
-
-                if tool_name.is_empty() {
-                    let result = tool_error("Missing tool name".to_string());
-                    ok_response(&id, result)
-                } else if !filter.allows(tool_name) {
-                    error_response(
-                        &id,
-                        -32601,
-                        &format!("Method not found: {} (filtered out at startup)", tool_name),
-                    )
+                if let Some(response) = handle_tools_call_early(&id, &params, &filter) {
+                    response
                 } else {
+                    let tool_name = params
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let arguments = params.get("arguments").cloned().unwrap_or(json!({}));
                     let result = call_tool(tool_name, &arguments, &client, &workspace_id).await;
                     ok_response(&id, result)
                 }
