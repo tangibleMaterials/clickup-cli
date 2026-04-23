@@ -1,0 +1,69 @@
+name: Bug report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in the fields below so I can reproduce.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `clickup --version`
+      placeholder: "clickup 0.8.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (x86_64, glibc)
+        - Linux (aarch64, glibc)
+        - Alpine / musl
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install?
+      options:
+        - crates.io (`cargo install`)
+        - npm (`npm install -g`)
+        - Homebrew
+        - AUR (`clickup-cli-bin`)
+        - GitHub Release binary
+        - Built from source
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal command sequence or config that triggers the bug.
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output / logs
+      description: Paste any relevant output. Scrub secrets (tokens, IDs).
+      render: shell
