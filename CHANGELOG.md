@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-23
+
+### Added
+- Task ID auto-detection from git branch names (#8). Task-scoped CLI commands (`task get`, `task update`, `task add-dep`, `comment create`, `attachment upload`, `checklist create`, `field set`, `member list`, `time list/create/start`, and more) now resolve the task ID from the current git branch when no explicit ID is given. Matches ClickUp default IDs like `CU-abc123` and custom `PREFIX-NUMBER` IDs; standard workflow prefixes (`feat/`, `fix/`, `hotfix/`, `bugfix/`, `release/`, `chore/`, `docs/`, `refactor/`, `test/`, `ci/`, `perf/`, `build/`, `style/`) are stripped before matching. Explicit CLI args always win; destructive or ambiguous commands (`task delete`, `task link`, `task unlink`, `guest share-task`, `guest unshare-task`) never auto-detect. Resolution chain: explicit arg → `CLICKUP_TASK_ID` env → git branch. A one-line breadcrumb `"resolved task X from branch Y"` is printed to stderr on table output; suppressed by `-q` or `--output json`.
+- Explicit `CU-` prefix on task IDs is now transparently stripped (`clickup task get CU-abc123` → `GET /v2/task/abc123`).
+- Custom-format explicit IDs (`PROJ-42`) auto-inject `custom_task_ids=true&team_id=<ws>` on all task-scoped commands, not just `task get --custom-task-id`.
+- New config section `[git] enabled = true / verbose = true` in `~/.config/clickup-cli/config.toml` and `.clickup.toml`. Turn detection off entirely with `[git] enabled = false` or per-invocation with `CLICKUP_GIT_DETECT=0`.
+- `CLICKUP_TASK_ID` environment variable as an alternative source (overrides branch, overridden by explicit CLI arg).
+- `CLICKUP_API_URL` environment variable to point the CLI at a mock server (integration-test infrastructure; not for end users).
+- MCP server is explicitly **out of scope** for branch-detect because the host editor pins the MCP server's `cwd` at spawn time — branch-detect from MCP would reliably resolve the wrong branch.
+
+### Fixed
+- `clickup attachment list` and the `clickup_attachment_list` MCP tool returned HTTP 400 for every task (#9). The CLI was calling `GET /v3/workspaces/{ws}/task/{id}/attachments`, which does not exist on ClickUp's side. Fixed to call `GET /v2/task/{id}` and extract the inline `attachments` array — per ClickUp's API docs, there is no dedicated list-attachments endpoint; attachments come back with the task itself.
+
+### Changed
+- `task add-tag` and `task remove-tag` now accept either `<task_id> <tag_name>` (two positionals, explicit) or `<tag_name>` alone (one positional, task auto-detected from branch). Fully backward compatible with the existing two-arg form.
+- The `[ID]` positional on `task get`, `task update`, `task add-dep`, `task remove-dep`, `task move`, `task set-estimate`, `task replace-estimates`, and `task delete` is now optional in `--help` output. Non-branch-detect behaviour of `task delete` is unchanged — it still refuses without an explicit ID.
+
 ## [0.8.2] - 2026-04-23
 
 ### Added
@@ -61,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.7.0...v0.8.0
