@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-04-23
+
+### Fixed
+- Release workflow: run `cargo publish` on a clean tree before downloading build artifacts, and drop `--allow-dirty`. The v0.8.0 release hit crates.io's 10 MB upload cap because the prior order packaged the downloaded platform binaries into the crate tarball. As a result, v0.8.0 made it to the GitHub Release page but never reached crates.io, npm, GitHub Packages, or Homebrew — v0.8.1 is the first fully-published build of the MCP tool filtering feature.
+
 ## [0.8.0] - 2026-04-23
 
 ### Added
@@ -49,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.6.7...v0.7.0
