@@ -114,7 +114,7 @@ This creates both `.clickup.toml` (auth config) and `.mcp.json` (MCP server conf
 
 ### Limiting MCP tools
 
-By default `clickup mcp serve` exposes all 143 tools. You can restrict this at startup to shrink the LLM's context and enforce access control. Flags and matching env vars:
+By default `clickup mcp serve` exposes all 143 tools. You can restrict this at startup to shrink the LLM's context and enforce access control. The server also logs the active filter to stderr on startup (e.g. `MCP: profile=read, exposing 52/143 tools`), so you can verify the configuration at a glance. Flags and matching env vars:
 
 | Flag | Env var | Purpose |
 | --- | --- | --- |
