@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-04-23
+
+### Fixed
+- `msrv` CI job had been failing on every push since it was introduced (`5f21db6`) because `Cargo.lock` is format v4 (default for cargo 1.78+) but the declared MSRV was `1.75`. Bumped `rust-version` to `1.88` — the actual minimum enforced by transitive dependencies today (`toml_writer` needs edition 2024 → 1.85; `icu_*@2.2.0` → 1.86; `comfy-table 7.2.2` uses let-chains → 1.88). No runtime behaviour change.
+- AUR publish workflow had never fired for any release. Root cause: our releases are created by `softprops/action-gh-release@v2` using `GITHUB_TOKEN`, and GitHub deliberately does not fire downstream workflow triggers for release events produced by `GITHUB_TOKEN` (anti-loop safeguard). Switched the AUR workflow's trigger from `release: [released]` to `workflow_run` after "Build and Release" completes successfully. Also added `workflow_dispatch` with a `tag` input so past releases can be rerun manually.
+- Bumped `KSXGitHub/github-actions-deploy-aur` from `v4.1.1` → `v4.1.3`. v4.1.1 is broken upstream (`runuser` rewrites `-c` as `--command`, which bash rejects); fixed in v4.1.2, hardened in v4.1.3.
+
 ## [0.9.0] - 2026-04-23
 
 ### Added
@@ -79,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.0...v0.8.1
