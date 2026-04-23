@@ -116,7 +116,7 @@ cargo install --path .
 
 ```bash
 clickup --version
-# clickup 0.8.1
+# clickup 0.8.2
 ```
 
 ## Quick Start
@@ -343,7 +343,7 @@ clickup status
 ```
 
 ```
-clickup-cli v0.8.1
+clickup-cli v0.8.2
 
 Config:    ~/.config/clickup-cli/config.toml
 Token:     pk_441...RB4Y
