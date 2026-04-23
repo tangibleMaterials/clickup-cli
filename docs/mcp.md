@@ -153,6 +153,25 @@ Task-focused agent (task + comment + time groups only):
 
 Filtered tools are rejected at `tools/call` as well as hidden from `tools/list`, so a misbehaving agent can't smuggle a destructive call past the filter.
 
+## vs. ClickUp's official MCP server
+
+ClickUp ships [its own MCP server](https://developer.clickup.com/docs/connect-an-ai-assistant-to-clickups-mcp-server). Both are valid, aimed at different use cases.
+
+| | `clickup mcp serve` (this project) | ClickUp official MCP |
+| --- | --- | --- |
+| Auth | Personal API token | OAuth only |
+| Hosting | Local (stdio) | ClickUp-hosted (HTTPS) |
+| Data residency | Stays on your machine | Routed through ClickUp |
+| Tool count | 143 (100% API coverage) | Curated subset |
+| Output | Token-optimized (~98% smaller than raw JSON) | Not specified |
+| Filtering | `--profile read/safe/all` + group/tool allowlist/denylist | — |
+| Offline / air-gapped | ✅ | ❌ |
+| Setup | `clickup mcp serve` (or via .mcp.json) | OAuth flow |
+
+**Pick this project when** you want local execution, personal-token auth, complete API coverage, and the ability to shape a read-only or task-focused agent via the filter flags.
+
+**Pick ClickUp's official** when you want OAuth (multi-user), zero install, or a curated tool set that ClickUp maintains.
+
 ## Available Tools (143)
 
 | Category | Tools | Count |

@@ -397,6 +397,26 @@ clickup completions powershell > clickup.ps1
 | 4 | Rate limited (429) |
 | 5 | Server error (5xx) |
 
+## Related projects
+
+Other community tools in the ClickUp ecosystem — picking the right one depends on your use case:
+
+**CLIs**
+
+- [`triptechtravel/clickup-cli`](https://github.com/triptechtravel/clickup-cli) — Go CLI focused on developer workflows. Auto-detects task IDs from git branch names (`CU-abc123`), tight GitHub PR integration.
+- [`dang3r/clickupy`](https://github.com/dang3r/clickupy) — Python CLI + library. Has a FUSE mount mode if you want to browse ClickUp like a filesystem.
+- [`code-gorilla-au/clickup-cli`](https://pkg.go.dev/github.com/code-gorilla-au/clickup-cli) — another Go CLI.
+- [`techlove/gitclick`](https://github.com/techlove/gitclick) — narrow-scope ClickUp ↔ GitHub PR sync.
+
+**MCP servers**
+
+- [ClickUp's official MCP](https://developer.clickup.com/docs/connect-an-ai-assistant-to-clickups-mcp-server) — hosted, OAuth, curated tool set.
+- [`taazkareem/clickup-mcp-server`](https://github.com/taazkareem/clickup-mcp-server), [`hauptsacheNet/clickup-mcp`](https://github.com/hauptsacheNet/clickup-mcp), [`Nazruden/clickup-mcp-server`](https://github.com/Nazruden/clickup-mcp-server) — community-maintained Node/TypeScript MCP servers.
+
+**Where this project fits**
+
+Rust binary, zero runtime dependency, ~130 REST endpoints + 143 MCP tools (100% API coverage), statically linked musl build for Alpine / distroless containers, and token-efficient output tuned for LLM agents. Use this when you want one binary that covers both the CLI and MCP roles without a Node/Python toolchain.
+
 ## License
 
 [Apache-2.0](LICENSE)
