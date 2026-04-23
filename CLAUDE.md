@@ -106,6 +106,8 @@ Resolution: `--flag` > `CLICKUP_TOKEN`/`CLICKUP_WORKSPACE` env > `.clickup.toml`
 
 Start with `clickup mcp serve`. Returns token-efficient compact JSON (same flattening as CLI tables). Exposes 143 tools with 100% ClickUp API coverage — every endpoint available via CLI is also available as an MCP tool.
 
+To limit what the server exposes, pass `--profile {all|read|safe}`, `--read-only`, `--groups`, `--exclude-groups`, `--tools`, or `--exclude-tools` (or the matching `CLICKUP_MCP_*` env vars).
+
 ## Exit Codes
 
 - 0: success

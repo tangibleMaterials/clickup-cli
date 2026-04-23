@@ -256,6 +256,47 @@ Or add `.mcp.json` to your project root manually:
 
 This exposes 143 tools covering 100% of the ClickUp API as native tool calls with token-efficient compact responses. See the [MCP documentation](https://clickup-cli.com/mcp) for full setup.
 
+### Limiting MCP tools
+
+By default `clickup mcp serve` exposes all 143 tools. You can restrict this at startup to shrink the LLM's context and enforce access control. Flags and matching env vars:
+
+| Flag | Env var | Purpose |
+| --- | --- | --- |
+| `--profile <name>` | `CLICKUP_MCP_PROFILE` | Preset: `all` (default), `read`, `safe` |
+| `--read-only` | `CLICKUP_MCP_READ_ONLY=1` | Alias for `--profile read` |
+| `--groups a,b,c` | `CLICKUP_MCP_GROUPS` | Include only these resource groups |
+| `--exclude-groups x,y` | `CLICKUP_MCP_EXCLUDE_GROUPS` | Drop these groups |
+| `--tools t1,t2` | `CLICKUP_MCP_TOOLS` | Include only these tools by exact name |
+| `--exclude-tools t1` | `CLICKUP_MCP_EXCLUDE_TOOLS` | Drop these tools |
+
+`--read-only` agent:
+
+```json
+{
+  "mcpServers": {
+    "clickup": {
+      "command": "clickup",
+      "args": ["mcp", "serve", "--read-only"]
+    }
+  }
+}
+```
+
+Task-focused agent (task + comment + time groups only):
+
+```json
+{
+  "mcpServers": {
+    "clickup": {
+      "command": "clickup",
+      "args": ["mcp", "serve", "--groups", "task,comment,time"]
+    }
+  }
+}
+```
+
+Filtered tools are rejected at `tools/call` as well as hidden from `tools/list`, so a misbehaving agent can't smuggle a destructive call past the filter.
+
 ## Configuration
 
 ### Config Files
