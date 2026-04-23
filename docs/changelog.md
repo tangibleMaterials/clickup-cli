@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-04-23
+
+### Added
+- Statically-linked Linux musl release binary (`clickup-linux-x86_64-musl.tar.gz`) for Alpine, distroless, and minimal-container use cases (#3). Runs on any Linux distro; no libc or TLS runtime dependencies.
+- Alpine install section in `docs/install.md` with a Dockerfile snippet, and a Linux Homebrew entry pointing at the existing tap.
+- Changelog now mirrored at https://clickup-cli.com/changelog/ via an auto-sync workflow that rebuilds `docs/changelog.md` on every push that touches `CHANGELOG.md`.
+
 ## [0.8.1] - 2026-04-23
 
 ### Fixed
@@ -61,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.6.7...v0.7.0
