@@ -14,6 +14,7 @@
   <a href="https://www.npmjs.com/package/@nick.bester/clickup-cli"><img src="https://img.shields.io/npm/v/@nick.bester/clickup-cli" alt="npm" /></a>
   <a href="https://github.com/nicholasbester/clickup-cli/releases"><img src="https://img.shields.io/github/v/release/nicholasbester/clickup-cli" alt="GitHub release" /></a>
   <a href="https://github.com/nicholasbester/clickup-cli/actions"><img src="https://img.shields.io/github/actions/workflow/status/nicholasbester/clickup-cli/ci.yml" alt="CI" /></a>
+  <a href="https://codecov.io/gh/nicholasbester/clickup-cli"><img src="https://img.shields.io/codecov/c/github/nicholasbester/clickup-cli" alt="Coverage" /></a>
   <a href="https://glama.ai/mcp/servers/nicholasbester/clickup-cli"><img src="https://glama.ai/mcp/servers/nicholasbester/clickup-cli/badges/score.svg" alt="Glama MCP" /></a>
   <a href="https://clickup-cli.com/">Documentation</a>
 </p>
