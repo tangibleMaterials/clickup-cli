@@ -1,6 +1,7 @@
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::error::CliError;
+use crate::git;
 use crate::output::OutputConfig;
 use crate::Cli;
 use clap::Subcommand;
@@ -9,12 +10,12 @@ use clap::Subcommand;
 pub enum ChecklistCommands {
     /// Create a checklist on a task
     Create {
-        /// Task ID
-        #[arg(long)]
-        task: String,
         /// Checklist name
         #[arg(long)]
         name: String,
+        /// Task ID (auto-detected from git branch if omitted)
+        #[arg(long)]
+        task: Option<String>,
     },
     /// Update a checklist
     Update {
@@ -78,9 +79,10 @@ pub async fn execute(command: ChecklistCommands, cli: &Cli) -> Result<(), CliErr
 
     match command {
         ChecklistCommands::Create { task, name } => {
+            let task = git::require_task(cli, task.as_deref(), true)?;
             let body = serde_json::json!({ "name": name });
             let resp = client
-                .post(&format!("/v2/task/{}/checklist", task), &body)
+                .post(&format!("/v2/task/{}/checklist", task.id), &body)
                 .await?;
             let checklist = resp.get("checklist").cloned().unwrap_or(resp);
             output.print_single(&checklist, &["id", "name", "task_id", "orderindex"], "id");

@@ -2,6 +2,7 @@ use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
+use crate::git;
 use crate::output::OutputConfig;
 use crate::Cli;
 use clap::Subcommand;
@@ -55,8 +56,8 @@ pub enum TaskCommands {
     },
     /// Get task details
     Get {
-        /// Task ID
-        id: String,
+        /// Task ID (auto-detected from git branch if omitted)
+        id: Option<String>,
         /// Include subtasks
         #[arg(long)]
         subtasks: bool,
@@ -96,8 +97,8 @@ pub enum TaskCommands {
     },
     /// Update a task
     Update {
-        /// Task ID
-        id: String,
+        /// Task ID (auto-detected from git branch if omitted)
+        id: Option<String>,
         /// New name
         #[arg(long)]
         name: Option<String>,
@@ -117,35 +118,35 @@ pub enum TaskCommands {
         #[arg(long)]
         description: Option<String>,
     },
-    /// Delete a task
+    /// Delete a task (explicit ID required — never auto-detects from branch)
     Delete {
         /// Task ID
-        id: String,
+        id: Option<String>,
     },
     /// Get time in status for task(s)
     TimeInStatus {
         /// Task ID(s) — multiple IDs triggers bulk mode
         ids: Vec<String>,
     },
-    /// Add a tag to a task
+    /// Add a tag to a task. Usage: add-tag <task_id> <tag_name>  OR  add-tag <tag_name> (task auto-detected from branch)
     AddTag {
-        /// Task ID
-        task_id: String,
-        /// Tag name
-        tag_name: String,
+        /// Task ID (or tag name if only one arg is given)
+        task_or_tag: String,
+        /// Tag name (when task_or_tag is a task ID)
+        tag_name: Option<String>,
     },
-    /// Remove a tag from a task
+    /// Remove a tag from a task. Usage: remove-tag <task_id> <tag_name>  OR  remove-tag <tag_name> (task auto-detected)
     RemoveTag {
-        /// Task ID
-        task_id: String,
-        /// Tag name
-        tag_name: String,
+        /// Task ID (or tag name if only one arg is given)
+        task_or_tag: String,
+        /// Tag name (when task_or_tag is a task ID)
+        tag_name: Option<String>,
     },
     /// Add a dependency to a task
     #[command(name = "add-dep")]
     AddDep {
-        /// Task ID
-        id: String,
+        /// Task ID (auto-detected from git branch if omitted)
+        id: Option<String>,
         /// This task depends on another task (task is a blocker)
         #[arg(long, conflicts_with = "dependency_of")]
         depends_on: Option<String>,
@@ -156,8 +157,8 @@ pub enum TaskCommands {
     /// Remove a dependency from a task
     #[command(name = "remove-dep")]
     RemoveDep {
-        /// Task ID
-        id: String,
+        /// Task ID (auto-detected from git branch if omitted)
+        id: Option<String>,
         /// Remove depends-on relationship with this task ID
         #[arg(long, conflicts_with = "dependency_of")]
         depends_on: Option<String>,
@@ -181,35 +182,35 @@ pub enum TaskCommands {
     },
     /// Move a task to a different list (v3)
     Move {
-        /// Task ID
-        id: String,
         /// Destination list ID
         #[arg(long)]
         list: String,
+        /// Task ID (auto-detected from git branch if omitted)
+        id: Option<String>,
     },
     /// Set per-user time estimate on a task (v3)
     #[command(name = "set-estimate")]
     SetEstimate {
-        /// Task ID
-        id: String,
         /// Assignee user ID
         #[arg(long)]
         assignee: String,
         /// Time estimate in milliseconds
         #[arg(long)]
         time: u64,
+        /// Task ID (auto-detected from git branch if omitted)
+        id: Option<String>,
     },
     /// Replace all per-user time estimates on a task (v3)
     #[command(name = "replace-estimates")]
     ReplaceEstimates {
-        /// Task ID
-        id: String,
         /// Assignee user ID
         #[arg(long)]
         assignee: String,
         /// Time estimate in milliseconds
         #[arg(long)]
         time: u64,
+        /// Task ID (auto-detected from git branch if omitted)
+        id: Option<String>,
     },
 }
 
@@ -375,11 +376,12 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             subtasks,
             custom_task_id,
         } => {
+            let task = git::require_task(cli, id.as_deref(), true)?;
             let mut params = Vec::new();
             if subtasks {
                 params.push("include_subtasks=true".to_string());
             }
-            if custom_task_id {
+            if custom_task_id || task.is_custom {
                 params.push("custom_task_ids=true".to_string());
                 let ws_id = resolve_workspace(cli)?;
                 params.push(format!("team_id={}", ws_id));
@@ -389,7 +391,9 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             } else {
                 format!("?{}", params.join("&"))
             };
-            let resp = client.get(&format!("/v2/task/{}{}", id, query)).await?;
+            let resp = client
+                .get(&format!("/v2/task/{}{}", task.id, query))
+                .await?;
             output.print_single(&resp, TASK_FIELDS, "id");
             Ok(())
         }
@@ -445,6 +449,7 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             rem_assignee,
             description,
         } => {
+            let task = git::require_task(cli, id.as_deref(), true)?;
             let mut body = serde_json::Map::new();
             if let Some(n) = name {
                 body.insert("name".into(), serde_json::Value::String(n));
@@ -477,35 +482,60 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 }
                 body.insert("assignees".into(), serde_json::Value::Object(assignees));
             }
-            let resp = client
-                .put(
-                    &format!("/v2/task/{}", id),
-                    &serde_json::Value::Object(body),
+            let path = if task.is_custom {
+                let ws_id = resolve_workspace(cli)?;
+                format!(
+                    "/v2/task/{}?custom_task_ids=true&team_id={}",
+                    task.id, ws_id
                 )
-                .await?;
+            } else {
+                format!("/v2/task/{}", task.id)
+            };
+            let resp = client.put(&path, &serde_json::Value::Object(body)).await?;
             output.print_single(&resp, TASK_FIELDS, "id");
             Ok(())
         }
         TaskCommands::Delete { id } => {
-            client.delete(&format!("/v2/task/{}", id)).await?;
-            output.print_message(&format!("Task {} deleted", id));
+            let task = git::require_task(cli, id.as_deref(), false)?;
+            let path = if task.is_custom {
+                let ws_id = resolve_workspace(cli)?;
+                format!(
+                    "/v2/task/{}?custom_task_ids=true&team_id={}",
+                    task.id, ws_id
+                )
+            } else {
+                format!("/v2/task/{}", task.id)
+            };
+            client.delete(&path).await?;
+            output.print_message(&format!("Task {} deleted", task.raw));
             Ok(())
         }
-        TaskCommands::AddTag { task_id, tag_name } => {
+        TaskCommands::AddTag {
+            task_or_tag,
+            tag_name,
+        } => {
+            let (task, tag_name) = resolve_task_tag(cli, task_or_tag, tag_name)?;
             client
                 .post(
-                    &format!("/v2/task/{}/tag/{}", task_id, tag_name),
+                    &format!("/v2/task/{}/tag/{}", task.id, tag_name),
                     &serde_json::json!({}),
                 )
                 .await?;
-            output.print_message(&format!("Tag '{}' added to task {}", tag_name, task_id));
+            output.print_message(&format!("Tag '{}' added to task {}", tag_name, task.raw));
             Ok(())
         }
-        TaskCommands::RemoveTag { task_id, tag_name } => {
+        TaskCommands::RemoveTag {
+            task_or_tag,
+            tag_name,
+        } => {
+            let (task, tag_name) = resolve_task_tag(cli, task_or_tag, tag_name)?;
             client
-                .delete(&format!("/v2/task/{}/tag/{}", task_id, tag_name))
+                .delete(&format!("/v2/task/{}/tag/{}", task.id, tag_name))
                 .await?;
-            output.print_message(&format!("Tag '{}' removed from task {}", tag_name, task_id));
+            output.print_message(&format!(
+                "Tag '{}' removed from task {}",
+                tag_name, task.raw
+            ));
             Ok(())
         }
         TaskCommands::AddDep {
@@ -513,6 +543,7 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             depends_on,
             dependency_of,
         } => {
+            let task = git::require_task(cli, id.as_deref(), true)?;
             let body = if let Some(other) = depends_on {
                 serde_json::json!({ "depends_on": other })
             } else if let Some(other) = dependency_of {
@@ -524,9 +555,9 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 });
             };
             client
-                .post(&format!("/v2/task/{}/dependency", id), &body)
+                .post(&format!("/v2/task/{}/dependency", task.id), &body)
                 .await?;
-            output.print_message(&format!("Dependency added to task {}", id));
+            output.print_message(&format!("Dependency added to task {}", task.raw));
             Ok(())
         }
         TaskCommands::RemoveDep {
@@ -534,6 +565,7 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             depends_on,
             dependency_of,
         } => {
+            let task = git::require_task(cli, id.as_deref(), true)?;
             let body = if let Some(other) = depends_on {
                 serde_json::json!({ "depends_on": other })
             } else if let Some(other) = dependency_of {
@@ -545,9 +577,9 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 });
             };
             client
-                .delete_with_body(&format!("/v2/task/{}/dependency", id), &body)
+                .delete_with_body(&format!("/v2/task/{}/dependency", task.id), &body)
                 .await?;
-            output.print_message(&format!("Dependency removed from task {}", id));
+            output.print_message(&format!("Dependency removed from task {}", task.raw));
             Ok(())
         }
         TaskCommands::Link { id, target_id } => {
@@ -568,18 +600,23 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             Ok(())
         }
         TaskCommands::Move { id, list } => {
-            let ws_id = crate::commands::workspace::resolve_workspace(cli)?;
+            let task = git::require_task(cli, id.as_deref(), true)?;
+            let ws_id = resolve_workspace(cli)?;
             client
                 .put(
-                    &format!("/v3/workspaces/{}/tasks/{}/home_list/{}", ws_id, id, list),
+                    &format!(
+                        "/v3/workspaces/{}/tasks/{}/home_list/{}",
+                        ws_id, task.id, list
+                    ),
                     &serde_json::json!({}),
                 )
                 .await?;
-            output.print_message(&format!("Task {} moved to list {}", id, list));
+            output.print_message(&format!("Task {} moved to list {}", task.raw, list));
             Ok(())
         }
         TaskCommands::SetEstimate { id, assignee, time } => {
-            let ws_id = crate::commands::workspace::resolve_workspace(cli)?;
+            let task = git::require_task(cli, id.as_deref(), true)?;
+            let ws_id = resolve_workspace(cli)?;
             let body = serde_json::json!({
                 "time_estimates": [{"user_id": assignee, "time_estimate": time}]
             });
@@ -587,7 +624,7 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 .patch(
                     &format!(
                         "/v3/workspaces/{}/tasks/{}/time_estimates_by_user",
-                        ws_id, id
+                        ws_id, task.id
                     ),
                     &body,
                 )
@@ -596,7 +633,8 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             Ok(())
         }
         TaskCommands::ReplaceEstimates { id, assignee, time } => {
-            let ws_id = crate::commands::workspace::resolve_workspace(cli)?;
+            let task = git::require_task(cli, id.as_deref(), true)?;
+            let ws_id = resolve_workspace(cli)?;
             let body = serde_json::json!({
                 "time_estimates": [{"user_id": assignee, "time_estimate": time}]
             });
@@ -604,7 +642,7 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 .put(
                     &format!(
                         "/v3/workspaces/{}/tasks/{}/time_estimates_by_user",
-                        ws_id, id
+                        ws_id, task.id
                     ),
                     &body,
                 )
@@ -613,6 +651,12 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             Ok(())
         }
         TaskCommands::TimeInStatus { ids } => {
+            let ids = if ids.is_empty() {
+                let task = git::require_task(cli, None, true)?;
+                vec![task.id]
+            } else {
+                ids
+            };
             if ids.len() == 1 {
                 let resp = client
                     .get(&format!("/v2/task/{}/time_in_status", ids[0]))
@@ -678,6 +722,23 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 }
             }
             Ok(())
+        }
+    }
+}
+
+/// Disambiguate `add-tag` / `remove-tag` positionals:
+/// - Two args: `<task_id> <tag_name>` — explicit ID, parsed through `parse_task_id`.
+/// - One arg: `<tag_name>` — task auto-detected from branch.
+fn resolve_task_tag(
+    cli: &Cli,
+    task_or_tag: String,
+    tag_name: Option<String>,
+) -> Result<(git::ResolvedTask, String), CliError> {
+    match tag_name {
+        Some(tag) => Ok((git::parse_task_id(&task_or_tag), tag)),
+        None => {
+            let task = git::require_task(cli, None, true)?;
+            Ok((task, task_or_tag))
         }
     }
 }

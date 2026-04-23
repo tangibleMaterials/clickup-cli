@@ -7,6 +7,8 @@ pub struct Config {
     pub auth: AuthConfig,
     #[serde(default)]
     pub defaults: DefaultsConfig,
+    #[serde(default)]
+    pub git: GitConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -20,6 +22,14 @@ pub struct DefaultsConfig {
     pub workspace_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct GitConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verbose: Option<bool>,
 }
 
 impl Config {

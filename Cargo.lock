@@ -274,6 +274,7 @@ dependencies = [
  "comfy-table",
  "dirs",
  "predicates",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

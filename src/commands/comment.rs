@@ -1,6 +1,7 @@
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::error::CliError;
+use crate::git;
 use crate::output::OutputConfig;
 use crate::Cli;
 use clap::Subcommand;
@@ -86,12 +87,12 @@ pub async fn execute(command: CommentCommands, cli: &Cli) -> Result<(), CliError
 
     match command {
         CommentCommands::List { task, list, view } => {
-            let (url, key) = if let Some(id) = task {
-                (format!("/v2/task/{}/comment", id), "comments")
-            } else if let Some(id) = list {
+            let (url, key) = if let Some(id) = list {
                 (format!("/v2/list/{}/comment", id), "comments")
             } else if let Some(id) = view {
                 (format!("/v2/view/{}/comment", id), "comments")
+            } else if let Some(resolved) = git::resolve_task(cli, task.as_deref(), true)? {
+                (format!("/v2/task/{}/comment", resolved.id), "comments")
             } else {
                 return Err(CliError::ClientError {
                     message: "One of --task, --list, or --view is required".to_string(),
@@ -129,19 +130,7 @@ pub async fn execute(command: CommentCommands, cli: &Cli) -> Result<(), CliError
             assignee,
             notify_all,
         } => {
-            let (url, resp) = if let Some(id) = task {
-                let mut body = serde_json::json!({
-                    "comment_text": text,
-                    "notify_all": notify_all,
-                });
-                if let Some(a) = assignee {
-                    body["assignee"] = serde_json::json!(a);
-                }
-                let r = client
-                    .post(&format!("/v2/task/{}/comment", id), &body)
-                    .await?;
-                (format!("/v2/task/{}/comment", id), r)
-            } else if let Some(id) = list {
+            let (url, resp) = if let Some(id) = list {
                 let body = serde_json::json!({ "comment_text": text });
                 let r = client
                     .post(&format!("/v2/list/{}/comment", id), &body)
@@ -153,6 +142,18 @@ pub async fn execute(command: CommentCommands, cli: &Cli) -> Result<(), CliError
                     .post(&format!("/v2/view/{}/comment", id), &body)
                     .await?;
                 (format!("/v2/view/{}/comment", id), r)
+            } else if let Some(resolved) = git::resolve_task(cli, task.as_deref(), true)? {
+                let mut body = serde_json::json!({
+                    "comment_text": text,
+                    "notify_all": notify_all,
+                });
+                if let Some(a) = assignee {
+                    body["assignee"] = serde_json::json!(a);
+                }
+                let r = client
+                    .post(&format!("/v2/task/{}/comment", resolved.id), &body)
+                    .await?;
+                (format!("/v2/task/{}/comment", resolved.id), r)
             } else {
                 return Err(CliError::ClientError {
                     message: "One of --task, --list, or --view is required".to_string(),

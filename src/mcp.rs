@@ -1268,7 +1268,7 @@ pub fn tool_list() -> Value {
         },
         {
             "name": "clickup_attachment_list",
-            "description": "List files attached to a ClickUp task — each attachment's id, title, size, mime type, url, and uploader. Uses the v3 attachments endpoint (cursor pagination). Use clickup_attachment_upload to add a new file. Returns an array of attachment objects.",
+            "description": "List files attached to a ClickUp task — each attachment's id, title, size, mime type, url, and uploader. Extracts the attachments array from the Get Task response (ClickUp has no dedicated list endpoint). Use clickup_attachment_upload to add a new file. Returns an array of attachment objects.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -3815,16 +3815,14 @@ async fn dispatch_tool(
         }
 
         "clickup_attachment_list" => {
-            let team_id = resolve_workspace(args)?;
             let task_id = args
                 .get("task_id")
                 .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
+            // ClickUp has no dedicated list-attachments endpoint. The `attachments`
+            // array is returned inline by GET /v2/task/{id}, per the API docs.
             let resp = client
-                .get(&format!(
-                    "/v3/workspaces/{}/task/{}/attachments",
-                    team_id, task_id
-                ))
+                .get(&format!("/v2/task/{}", task_id))
                 .await
                 .map_err(|e| e.to_string())?;
             let attachments = resp

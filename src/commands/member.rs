@@ -1,6 +1,7 @@
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::error::CliError;
+use crate::git;
 use crate::output::OutputConfig;
 use crate::Cli;
 use clap::Subcommand;
@@ -27,10 +28,10 @@ pub async fn execute(command: MemberCommands, cli: &Cli) -> Result<(), CliError>
 
     match command {
         MemberCommands::List { task, list } => {
-            let url = if let Some(id) = task {
-                format!("/v2/task/{}/member", id)
-            } else if let Some(id) = list {
+            let url = if let Some(id) = list {
                 format!("/v2/list/{}/member", id)
+            } else if let Some(resolved) = git::resolve_task(cli, task.as_deref(), true)? {
+                format!("/v2/task/{}/member", resolved.id)
             } else {
                 return Err(CliError::ClientError {
                     message: "Specify either --task ID or --list ID".into(),

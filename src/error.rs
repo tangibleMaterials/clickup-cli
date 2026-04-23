@@ -22,6 +22,8 @@ pub enum CliError {
     ServerError { message: String },
     #[error("{0}")]
     ConfigError(String),
+    #[error("{message}")]
+    BranchDetect { message: String, hint: String },
     #[error("{0}")]
     IoError(#[from] std::io::Error),
 }
@@ -36,6 +38,7 @@ impl CliError {
             CliError::RateLimited { .. } => 4,
             CliError::ServerError { .. } => 5,
             CliError::ConfigError(_) => 1,
+            CliError::BranchDetect { .. } => 1,
             CliError::IoError(_) => 1,
         }
     }
@@ -93,6 +96,7 @@ impl CliError {
             CliError::ConfigError(_) => {
                 Some("Run 'clickup setup' to configure your API token".into())
             }
+            CliError::BranchDetect { hint, .. } => Some(hint.clone()),
             _ => None,
         }
     }

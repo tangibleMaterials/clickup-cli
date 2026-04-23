@@ -75,6 +75,7 @@ pub async fn execute(args: SetupArgs, cli: &Cli) -> Result<(), CliError> {
             workspace_id: Some(workspace_id),
             output: None,
         },
+        git: Default::default(),
     };
     config.save()?;
 

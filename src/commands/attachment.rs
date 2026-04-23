@@ -1,7 +1,7 @@
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
-use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
+use crate::git;
 use crate::output::OutputConfig;
 use crate::Cli;
 use clap::Subcommand;
@@ -10,17 +10,17 @@ use clap::Subcommand;
 pub enum AttachmentCommands {
     /// Upload a file attachment to a task
     Upload {
-        /// Task ID
-        #[arg(long)]
-        task: String,
         /// Path to the file to upload
         file: std::path::PathBuf,
-    },
-    /// List attachments for a task (v3)
-    List {
-        /// Task ID
+        /// Task ID (auto-detected from git branch if omitted)
         #[arg(long)]
-        task: String,
+        task: Option<String>,
+    },
+    /// List attachments on a task (extracted from the Get Task response)
+    List {
+        /// Task ID (auto-detected from git branch if omitted)
+        #[arg(long)]
+        task: Option<String>,
     },
 }
 
@@ -33,20 +33,18 @@ pub async fn execute(command: AttachmentCommands, cli: &Cli) -> Result<(), CliEr
 
     match command {
         AttachmentCommands::Upload { task, file } => {
+            let task = git::require_task(cli, task.as_deref(), true)?;
             let resp = client
-                .upload_file(&format!("/v2/task/{}/attachment", task), &file)
+                .upload_file(&format!("/v2/task/{}/attachment", task.id), &file)
                 .await?;
             output.print_single(&resp, ATTACHMENT_FIELDS, "id");
             Ok(())
         }
         AttachmentCommands::List { task } => {
-            let team_id = resolve_workspace(cli)?;
-            let resp = client
-                .get(&format!(
-                    "/v3/workspaces/{}/task/{}/attachments",
-                    team_id, task
-                ))
-                .await?;
+            // ClickUp has no dedicated list-attachments endpoint. The `attachments`
+            // array is returned inline by GET /v2/task/{id}, per the API docs.
+            let task = git::require_task(cli, task.as_deref(), true)?;
+            let resp = client.get(&format!("/v2/task/{}", task.id)).await?;
             let attachments = resp
                 .get("attachments")
                 .and_then(|a| a.as_array())

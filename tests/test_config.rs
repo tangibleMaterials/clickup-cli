@@ -18,6 +18,7 @@ fn test_config_save_and_load() {
                 workspace_id: Some("12345".into()),
                 output: None,
             },
+            git: Default::default(),
         };
         config.save_to(path).unwrap();
         let loaded = Config::load_from(path).unwrap();
@@ -53,6 +54,7 @@ fn test_config_save_creates_parent_dirs() {
             token: "pk_test".into(),
         },
         defaults: clickup_cli::config::DefaultsConfig::default(),
+        git: Default::default(),
     };
     config.save_to(&path).unwrap();
     assert!(path.exists());

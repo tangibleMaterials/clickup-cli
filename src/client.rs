@@ -20,9 +20,11 @@ impl ClickUpClient {
                 message: format!("Failed to create HTTP client: {}", e),
                 status: 0,
             })?;
+        let base_url = std::env::var("CLICKUP_API_URL")
+            .unwrap_or_else(|_| "https://api.clickup.com/api".to_string());
         Ok(Self {
             http,
-            base_url: "https://api.clickup.com/api".to_string(),
+            base_url,
             token: token.to_string(),
             rate_limit_remaining: Arc::new(AtomicU64::new(100)),
             rate_limit_reset: Arc::new(AtomicU64::new(0)),

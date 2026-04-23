@@ -192,6 +192,31 @@ clickup task list --list 12345 --output json-compact # Default fields as JSON
 clickup task list --list 12345 --output csv          # CSV
 clickup task list --list 12345 -q                    # IDs only
 clickup task list --list 12345 --fields id,name,status  # Custom fields
+
+# Auto-detect task ID from git branch (on a branch like feat/CU-abc123-foo)
+clickup task get                                     # Resolves to abc123 from the branch
+clickup task update --status "in progress"
+clickup comment create --text "Looking good!"
+clickup field set FIELD_ID --value "some value"
+```
+
+### Auto-detect task ID from git branch
+
+When a git-tracked branch follows a common naming convention, clickup-cli resolves the task ID automatically:
+
+- ClickUp default IDs — `feat/CU-abc123-foo` → `abc123`
+- Custom task IDs — `PROJ-42-add-login` → `PROJ-42` (auto-injects `custom_task_ids=true&team_id=<ws>`)
+
+Prefixes stripped case-insensitively: `feature/`, `feat/`, `fix/`, `hotfix/`, `bugfix/`, `release/`, `chore/`, `docs/`, `refactor/`, `test/`, `ci/`, `perf/`, `build/`, `style/`. Custom-ID matches whose prefix is `FEATURE`, `FEAT`, `BUGFIX`, `BUG`, `FIX`, `HOTFIX`, `RELEASE`, `CHORE`, `DOCS`, `DOC`, `REFACTOR`, `TEST`, `CI`, `PERF`, `BUILD`, `STYLE`, `WIP`, or `TMP` are rejected.
+
+Resolution order (highest priority first): explicit CLI arg → `CLICKUP_TASK_ID` env var → git branch. Explicit `CU-abc123` is transparently stripped to `abc123`. Destructive or ambiguous commands (`task delete`, `task link`, `task unlink`, `guest share-task`, `guest unshare-task`) never auto-detect — pass the ID explicitly.
+
+Disable for one invocation with `CLICKUP_GIT_DETECT=0`, or permanently in config:
+
+```toml
+[git]
+enabled = false    # disable branch detection
+verbose = false    # suppress the "resolved task X from branch Y" breadcrumb
 ```
 
 ## Command Groups

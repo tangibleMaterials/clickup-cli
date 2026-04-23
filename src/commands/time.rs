@@ -2,6 +2,7 @@ use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
+use crate::git;
 use crate::output::OutputConfig;
 use crate::Cli;
 use clap::Subcommand;
@@ -160,8 +161,8 @@ pub async fn execute(command: TimeCommands, cli: &Cli) -> Result<(), CliError> {
             if let Some(a) = assignee {
                 params.push(format!("assignee={}", a));
             }
-            if let Some(t) = task {
-                params.push(format!("task_id={}", t));
+            if let Some(t) = git::resolve_task(cli, task.as_deref(), true)? {
+                params.push(format!("task_id={}", t.id));
             }
             let query = if params.is_empty() {
                 String::new()
@@ -218,8 +219,8 @@ pub async fn execute(command: TimeCommands, cli: &Cli) -> Result<(), CliError> {
                 "duration": duration,
                 "billable": billable,
             });
-            if let Some(t) = task {
-                body["tid"] = serde_json::Value::String(t);
+            if let Some(t) = git::resolve_task(cli, task.as_deref(), true)? {
+                body["tid"] = serde_json::Value::String(t.id);
             }
             if let Some(d) = description {
                 body["description"] = serde_json::Value::String(d);
@@ -282,8 +283,8 @@ pub async fn execute(command: TimeCommands, cli: &Cli) -> Result<(), CliError> {
             billable,
         } => {
             let mut body = serde_json::json!({ "billable": billable });
-            if let Some(t) = task {
-                body["tid"] = serde_json::Value::String(t);
+            if let Some(t) = git::resolve_task(cli, task.as_deref(), true)? {
+                body["tid"] = serde_json::Value::String(t.id);
             }
             if let Some(d) = description {
                 body["description"] = serde_json::Value::String(d);
