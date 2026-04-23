@@ -1,9 +1,9 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum CommentCommands {
@@ -176,9 +176,7 @@ pub async fn execute(command: CommentCommands, cli: &Cli) -> Result<(), CliError
             if let Some(a) = assignee {
                 body["assignee"] = serde_json::json!(a);
             }
-            let resp = client
-                .put(&format!("/v2/comment/{}", id), &body)
-                .await?;
+            let resp = client.put(&format!("/v2/comment/{}", id), &body).await?;
             output.print_single(&resp, COMMENT_FIELDS, "id");
             Ok(())
         }
@@ -188,9 +186,7 @@ pub async fn execute(command: CommentCommands, cli: &Cli) -> Result<(), CliError
             Ok(())
         }
         CommentCommands::Replies { id } => {
-            let resp = client
-                .get(&format!("/v2/comment/{}/reply", id))
-                .await?;
+            let resp = client.get(&format!("/v2/comment/{}/reply", id)).await?;
             let comments = resp
                 .get("comments")
                 .and_then(|c| c.as_array())

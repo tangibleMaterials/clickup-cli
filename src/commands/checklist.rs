@@ -1,9 +1,9 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum ChecklistCommands {
@@ -95,7 +95,10 @@ pub async fn execute(command: ChecklistCommands, cli: &Cli) -> Result<(), CliErr
                 body.insert("position".into(), serde_json::json!(p));
             }
             let resp = client
-                .put(&format!("/v2/checklist/{}", id), &serde_json::Value::Object(body))
+                .put(
+                    &format!("/v2/checklist/{}", id),
+                    &serde_json::Value::Object(body),
+                )
                 .await?;
             let checklist = resp.get("checklist").cloned().unwrap_or(resp);
             output.print_single(&checklist, &["id", "name", "orderindex"], "id");

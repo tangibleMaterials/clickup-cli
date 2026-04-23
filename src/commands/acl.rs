@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum AclCommands {
@@ -56,7 +56,10 @@ pub async fn execute(command: AclCommands, cli: &Cli) -> Result<(), CliError> {
             } else {
                 let mut b = serde_json::Map::new();
                 if private {
-                    b.insert("access_type".into(), serde_json::Value::String("private".into()));
+                    b.insert(
+                        "access_type".into(),
+                        serde_json::Value::String("private".into()),
+                    );
                 }
                 if let Some(uid) = grant_user {
                     let level = permission.unwrap_or_else(|| "read".into());
@@ -66,10 +69,7 @@ pub async fn execute(command: AclCommands, cli: &Cli) -> Result<(), CliError> {
                     );
                 }
                 if let Some(uid) = revoke_user {
-                    b.insert(
-                        "revoke".into(),
-                        serde_json::json!([{ "user_id": uid }]),
-                    );
+                    b.insert("revoke".into(), serde_json::json!([{ "user_id": uid }]));
                 }
                 serde_json::Value::Object(b)
             };
@@ -87,10 +87,7 @@ pub async fn execute(command: AclCommands, cli: &Cli) -> Result<(), CliError> {
             if cli.output == "json" {
                 println!("{}", serde_json::to_string_pretty(&resp).unwrap());
             } else {
-                output.print_message(&format!(
-                    "ACL updated for {} {}",
-                    object_type, object_id
-                ));
+                output.print_message(&format!("ACL updated for {} {}", object_type, object_id));
             }
             Ok(())
         }

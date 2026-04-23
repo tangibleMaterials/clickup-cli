@@ -2016,7 +2016,11 @@ async fn dispatch_tool(
 
         "clickup_workspace_list" => {
             let resp = client.get("/v2/team").await.map_err(|e| e.to_string())?;
-            let teams = resp.get("teams").and_then(|t| t.as_array()).cloned().unwrap_or_default();
+            let teams = resp
+                .get("teams")
+                .and_then(|t| t.as_array())
+                .cloned()
+                .unwrap_or_default();
             let items: Vec<Value> = teams.iter().map(|ws| {
                 json!({
                     "id": ws.get("id"),
@@ -2029,11 +2033,21 @@ async fn dispatch_tool(
 
         "clickup_space_list" => {
             let team_id = resolve_workspace(args)?;
-            let archived = args.get("archived").and_then(|v| v.as_bool()).unwrap_or(false);
+            let archived = args
+                .get("archived")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             let path = format!("/v2/team/{}/space?archived={}", team_id, archived);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let spaces = resp.get("spaces").and_then(|s| s.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&spaces, &["id", "name", "private", "archived"]))
+            let spaces = resp
+                .get("spaces")
+                .and_then(|s| s.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &spaces,
+                &["id", "name", "private", "archived"],
+            ))
         }
 
         "clickup_folder_list" => {
@@ -2041,24 +2055,44 @@ async fn dispatch_tool(
                 .get("space_id")
                 .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
-            let archived = args.get("archived").and_then(|v| v.as_bool()).unwrap_or(false);
+            let archived = args
+                .get("archived")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             let path = format!("/v2/space/{}/folder?archived={}", space_id, archived);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let folders = resp.get("folders").and_then(|f| f.as_array()).cloned().unwrap_or_default();
-            let items: Vec<Value> = folders.iter().map(|f| {
-                let list_count = f.get("lists").and_then(|l| l.as_array()).map(|a| a.len()).unwrap_or(0);
-                json!({
-                    "id": f.get("id"),
-                    "name": f.get("name"),
-                    "task_count": f.get("task_count"),
-                    "list_count": list_count,
+            let folders = resp
+                .get("folders")
+                .and_then(|f| f.as_array())
+                .cloned()
+                .unwrap_or_default();
+            let items: Vec<Value> = folders
+                .iter()
+                .map(|f| {
+                    let list_count = f
+                        .get("lists")
+                        .and_then(|l| l.as_array())
+                        .map(|a| a.len())
+                        .unwrap_or(0);
+                    json!({
+                        "id": f.get("id"),
+                        "name": f.get("name"),
+                        "task_count": f.get("task_count"),
+                        "list_count": list_count,
+                    })
                 })
-            }).collect();
-            Ok(compact_items(&items, &["id", "name", "task_count", "list_count"]))
+                .collect();
+            Ok(compact_items(
+                &items,
+                &["id", "name", "task_count", "list_count"],
+            ))
         }
 
         "clickup_list_list" => {
-            let archived = args.get("archived").and_then(|v| v.as_bool()).unwrap_or(false);
+            let archived = args
+                .get("archived")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             let path = if let Some(folder_id) = args.get("folder_id").and_then(|v| v.as_str()) {
                 format!("/v2/folder/{}/list?archived={}", folder_id, archived)
             } else if let Some(space_id) = args.get("space_id").and_then(|v| v.as_str()) {
@@ -2067,8 +2101,15 @@ async fn dispatch_tool(
                 return Err("Provide either folder_id or space_id".to_string());
             };
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let lists = resp.get("lists").and_then(|l| l.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&lists, &["id", "name", "task_count", "status", "due_date"]))
+            let lists = resp
+                .get("lists")
+                .and_then(|l| l.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &lists,
+                &["id", "name", "task_count", "status", "due_date"],
+            ))
         }
 
         "clickup_task_list" => {
@@ -2096,8 +2137,15 @@ async fn dispatch_tool(
             }
             let path = format!("/v2/list/{}/task?{}", list_id, qs.trim_start_matches('&'));
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let tasks = resp.get("tasks").and_then(|t| t.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&tasks, &["id", "name", "status", "priority", "assignees", "due_date"]))
+            let tasks = resp
+                .get("tasks")
+                .and_then(|t| t.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &tasks,
+                &["id", "name", "status", "priority", "assignees", "due_date"],
+            ))
         }
 
         "clickup_task_get" => {
@@ -2109,12 +2157,20 @@ async fn dispatch_tool(
                 .get("include_subtasks")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
-            let path = format!(
-                "/v2/task/{}?include_subtasks={}",
-                task_id, include_subtasks
-            );
+            let path = format!("/v2/task/{}?include_subtasks={}", task_id, include_subtasks);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            Ok(compact_items(&[resp], &["id", "name", "status", "priority", "assignees", "due_date", "description"]))
+            Ok(compact_items(
+                &[resp],
+                &[
+                    "id",
+                    "name",
+                    "status",
+                    "priority",
+                    "assignees",
+                    "due_date",
+                    "description",
+                ],
+            ))
         }
 
         "clickup_task_create" => {
@@ -2147,7 +2203,10 @@ async fn dispatch_tool(
             }
             let path = format!("/v2/list/{}/task", list_id);
             let resp = client.post(&path, &body).await.map_err(|e| e.to_string())?;
-            Ok(compact_items(&[resp], &["id", "name", "status", "priority", "assignees", "due_date"]))
+            Ok(compact_items(
+                &[resp],
+                &["id", "name", "status", "priority", "assignees", "due_date"],
+            ))
         }
 
         "clickup_task_update" => {
@@ -2175,7 +2234,10 @@ async fn dispatch_tool(
             }
             let path = format!("/v2/task/{}", task_id);
             let resp = client.put(&path, &body).await.map_err(|e| e.to_string())?;
-            Ok(compact_items(&[resp], &["id", "name", "status", "priority", "assignees", "due_date"]))
+            Ok(compact_items(
+                &[resp],
+                &["id", "name", "status", "priority", "assignees", "due_date"],
+            ))
         }
 
         "clickup_task_delete" => {
@@ -2219,14 +2281,17 @@ async fn dispatch_tool(
                     }
                 }
             }
-            let path = format!(
-                "/v2/team/{}/task?{}",
-                team_id,
-                qs.trim_start_matches('&')
-            );
+            let path = format!("/v2/team/{}/task?{}", team_id, qs.trim_start_matches('&'));
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let tasks = resp.get("tasks").and_then(|t| t.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&tasks, &["id", "name", "status", "priority", "assignees", "due_date"]))
+            let tasks = resp
+                .get("tasks")
+                .and_then(|t| t.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &tasks,
+                &["id", "name", "status", "priority", "assignees", "due_date"],
+            ))
         }
 
         "clickup_comment_list" => {
@@ -2236,8 +2301,15 @@ async fn dispatch_tool(
                 .ok_or("Missing required parameter: task_id")?;
             let path = format!("/v2/task/{}/comment", task_id);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let comments = resp.get("comments").and_then(|c| c.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&comments, &["id", "user", "date", "comment_text"]))
+            let comments = resp
+                .get("comments")
+                .and_then(|c| c.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &comments,
+                &["id", "user", "date", "comment_text"],
+            ))
         }
 
         "clickup_comment_create" => {
@@ -2268,7 +2340,11 @@ async fn dispatch_tool(
                 .ok_or("Missing required parameter: list_id")?;
             let path = format!("/v2/list/{}/field", list_id);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let fields = resp.get("fields").and_then(|f| f.as_array()).cloned().unwrap_or_default();
+            let fields = resp
+                .get("fields")
+                .and_then(|f| f.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&fields, &["id", "name", "type", "required"]))
         }
 
@@ -2281,7 +2357,9 @@ async fn dispatch_tool(
                 .get("field_id")
                 .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: field_id")?;
-            let value = args.get("value").ok_or("Missing required parameter: value")?;
+            let value = args
+                .get("value")
+                .ok_or("Missing required parameter: value")?;
             let body = json!({"value": value});
             let path = format!("/v2/task/{}/field/{}", task_id, field_id);
             client.post(&path, &body).await.map_err(|e| e.to_string())?;
@@ -2303,15 +2381,24 @@ async fn dispatch_tool(
             let path = format!("/v2/team/{}/time_entries/start", team_id);
             let resp = client.post(&path, &body).await.map_err(|e| e.to_string())?;
             let data = resp.get("data").cloned().unwrap_or(resp);
-            Ok(compact_items(&[data], &["id", "task", "duration", "start", "billable"]))
+            Ok(compact_items(
+                &[data],
+                &["id", "task", "duration", "start", "billable"],
+            ))
         }
 
         "clickup_time_stop" => {
             let team_id = resolve_workspace(args)?;
             let path = format!("/v2/team/{}/time_entries/stop", team_id);
-            let resp = client.post(&path, &json!({})).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(&path, &json!({}))
+                .await
+                .map_err(|e| e.to_string())?;
             let data = resp.get("data").cloned().unwrap_or(resp);
-            Ok(compact_items(&[data], &["id", "task", "duration", "start", "end", "billable"]))
+            Ok(compact_items(
+                &[data],
+                &["id", "task", "duration", "start", "end", "billable"],
+            ))
         }
 
         "clickup_time_list" => {
@@ -2332,8 +2419,15 @@ async fn dispatch_tool(
                 qs.trim_start_matches('&')
             );
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let entries = resp.get("data").and_then(|d| d.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&entries, &["id", "task", "duration", "start", "billable"]))
+            let entries = resp
+                .get("data")
+                .and_then(|d| d.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &entries,
+                &["id", "task", "duration", "start", "billable"],
+            ))
         }
 
         "clickup_checklist_create" => {
@@ -2366,8 +2460,15 @@ async fn dispatch_tool(
             let team_id = resolve_workspace(args)?;
             let path = format!("/v2/team/{}/goal", team_id);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let goals = resp.get("goals").and_then(|g| g.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&goals, &["id", "name", "percent_completed", "due_date"]))
+            let goals = resp
+                .get("goals")
+                .and_then(|g| g.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &goals,
+                &["id", "name", "percent_completed", "due_date"],
+            ))
         }
 
         "clickup_goal_get" => {
@@ -2378,7 +2479,10 @@ async fn dispatch_tool(
             let path = format!("/v2/goal/{}", goal_id);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
             let goal = resp.get("goal").cloned().unwrap_or(resp);
-            Ok(compact_items(&[goal], &["id", "name", "percent_completed", "due_date", "description"]))
+            Ok(compact_items(
+                &[goal],
+                &["id", "name", "percent_completed", "due_date", "description"],
+            ))
         }
 
         "clickup_goal_create" => {
@@ -2436,7 +2540,11 @@ async fn dispatch_tool(
                 format!("/v2/team/{}/view", team_id)
             };
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let views = resp.get("views").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+            let views = resp
+                .get("views")
+                .and_then(|v| v.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&views, &["id", "name", "type"]))
         }
 
@@ -2448,15 +2556,26 @@ async fn dispatch_tool(
             let page = args.get("page").and_then(|v| v.as_i64()).unwrap_or(0);
             let path = format!("/v2/view/{}/task?page={}", view_id, page);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let tasks = resp.get("tasks").and_then(|t| t.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&tasks, &["id", "name", "status", "priority", "assignees", "due_date"]))
+            let tasks = resp
+                .get("tasks")
+                .and_then(|t| t.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &tasks,
+                &["id", "name", "status", "priority", "assignees", "due_date"],
+            ))
         }
 
         "clickup_doc_list" => {
             let team_id = resolve_workspace(args)?;
             let path = format!("/v3/workspaces/{}/docs", team_id);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let docs = resp.get("docs").and_then(|d| d.as_array()).cloned().unwrap_or_default();
+            let docs = resp
+                .get("docs")
+                .and_then(|d| d.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&docs, &["id", "name", "date_created"]))
         }
 
@@ -2477,10 +2596,17 @@ async fn dispatch_tool(
                 .get("doc_id")
                 .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: doc_id")?;
-            let content = args.get("content").and_then(|v| v.as_bool()).unwrap_or(false);
+            let content = args
+                .get("content")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
             let path = format!("/v3/workspaces/{}/docs/{}/pages?content_format=text/md&max_page_depth=-1&include_content={}", team_id, doc_id, content);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let pages = resp.get("pages").and_then(|p| p.as_array()).cloned().unwrap_or_default();
+            let pages = resp
+                .get("pages")
+                .and_then(|p| p.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&pages, &["id", "name"]))
         }
 
@@ -2491,7 +2617,11 @@ async fn dispatch_tool(
                 .ok_or("Missing required parameter: space_id")?;
             let path = format!("/v2/space/{}/tag", space_id);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let tags = resp.get("tags").and_then(|t| t.as_array()).cloned().unwrap_or_default();
+            let tags = resp
+                .get("tags")
+                .and_then(|t| t.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&tags, &["name", "tag_fg", "tag_bg"]))
         }
 
@@ -2505,7 +2635,10 @@ async fn dispatch_tool(
                 .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: tag_name")?;
             let path = format!("/v2/task/{}/tag/{}", task_id, tag_name);
-            client.post(&path, &json!({})).await.map_err(|e| e.to_string())?;
+            client
+                .post(&path, &json!({}))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Tag '{}' added to task {}", tag_name, task_id)}))
         }
 
@@ -2527,8 +2660,15 @@ async fn dispatch_tool(
             let team_id = resolve_workspace(args)?;
             let path = format!("/v2/team/{}/webhook", team_id);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let webhooks = resp.get("webhooks").and_then(|w| w.as_array()).cloned().unwrap_or_default();
-            Ok(compact_items(&webhooks, &["id", "endpoint", "events", "status"]))
+            let webhooks = resp
+                .get("webhooks")
+                .and_then(|w| w.as_array())
+                .cloned()
+                .unwrap_or_default();
+            Ok(compact_items(
+                &webhooks,
+                &["id", "endpoint", "events", "status"],
+            ))
         }
 
         "clickup_member_list" => {
@@ -2540,7 +2680,11 @@ async fn dispatch_tool(
                 return Err("Provide either task_id or list_id".to_string());
             };
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let members = resp.get("members").and_then(|m| m.as_array()).cloned().unwrap_or_default();
+            let members = resp
+                .get("members")
+                .and_then(|m| m.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&members, &["id", "username", "email"]))
         }
 
@@ -2549,95 +2693,171 @@ async fn dispatch_tool(
             let page = args.get("page").and_then(|v| v.as_i64()).unwrap_or(0);
             let path = format!("/v2/team/{}/taskTemplate?page={}", team_id, page);
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let templates = resp.get("templates").and_then(|t| t.as_array()).cloned().unwrap_or_default();
+            let templates = resp
+                .get("templates")
+                .and_then(|t| t.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&templates, &["id", "name"]))
         }
 
         "clickup_space_get" => {
-            let space_id = args.get("space_id").and_then(|v| v.as_str())
+            let space_id = args
+                .get("space_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
-            let resp = client.get(&format!("/v2/space/{}", space_id)).await.map_err(|e| e.to_string())?;
-            Ok(compact_items(&[resp], &["id", "name", "private", "archived"]))
+            let resp = client
+                .get(&format!("/v2/space/{}", space_id))
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(compact_items(
+                &[resp],
+                &["id", "name", "private", "archived"],
+            ))
         }
 
         "clickup_space_create" => {
             let team_id = resolve_workspace(args)?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let mut body = json!({"name": name});
             if let Some(private) = args.get("private").and_then(|v| v.as_bool()) {
                 body["private"] = json!(private);
             }
-            let resp = client.post(&format!("/v2/team/{}/space", team_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(&format!("/v2/team/{}/space", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name", "private"]))
         }
 
         "clickup_space_update" => {
-            let space_id = args.get("space_id").and_then(|v| v.as_str())
+            let space_id = args
+                .get("space_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
             let mut body = json!({});
-            if let Some(name) = args.get("name").and_then(|v| v.as_str()) { body["name"] = json!(name); }
-            if let Some(private) = args.get("private").and_then(|v| v.as_bool()) { body["private"] = json!(private); }
-            if let Some(archived) = args.get("archived").and_then(|v| v.as_bool()) { body["archived"] = json!(archived); }
-            let resp = client.put(&format!("/v2/space/{}", space_id), &body).await.map_err(|e| e.to_string())?;
-            Ok(compact_items(&[resp], &["id", "name", "private", "archived"]))
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                body["name"] = json!(name);
+            }
+            if let Some(private) = args.get("private").and_then(|v| v.as_bool()) {
+                body["private"] = json!(private);
+            }
+            if let Some(archived) = args.get("archived").and_then(|v| v.as_bool()) {
+                body["archived"] = json!(archived);
+            }
+            let resp = client
+                .put(&format!("/v2/space/{}", space_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(compact_items(
+                &[resp],
+                &["id", "name", "private", "archived"],
+            ))
         }
 
         "clickup_space_delete" => {
-            let space_id = args.get("space_id").and_then(|v| v.as_str())
+            let space_id = args
+                .get("space_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
-            client.delete(&format!("/v2/space/{}", space_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/space/{}", space_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Space {} deleted", space_id)}))
         }
 
         "clickup_folder_get" => {
-            let folder_id = args.get("folder_id").and_then(|v| v.as_str())
+            let folder_id = args
+                .get("folder_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: folder_id")?;
-            let resp = client.get(&format!("/v2/folder/{}", folder_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/folder/{}", folder_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name", "task_count"]))
         }
 
         "clickup_folder_create" => {
-            let space_id = args.get("space_id").and_then(|v| v.as_str())
+            let space_id = args
+                .get("space_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let body = json!({"name": name});
-            let resp = client.post(&format!("/v2/space/{}/folder", space_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(&format!("/v2/space/{}/folder", space_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_folder_update" => {
-            let folder_id = args.get("folder_id").and_then(|v| v.as_str())
+            let folder_id = args
+                .get("folder_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: folder_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let body = json!({"name": name});
-            let resp = client.put(&format!("/v2/folder/{}", folder_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .put(&format!("/v2/folder/{}", folder_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_folder_delete" => {
-            let folder_id = args.get("folder_id").and_then(|v| v.as_str())
+            let folder_id = args
+                .get("folder_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: folder_id")?;
-            client.delete(&format!("/v2/folder/{}", folder_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/folder/{}", folder_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Folder {} deleted", folder_id)}))
         }
 
         "clickup_list_get" => {
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
-            let resp = client.get(&format!("/v2/list/{}", list_id)).await.map_err(|e| e.to_string())?;
-            Ok(compact_items(&[resp], &["id", "name", "task_count", "status", "due_date"]))
+            let resp = client
+                .get(&format!("/v2/list/{}", list_id))
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(compact_items(
+                &[resp],
+                &["id", "name", "task_count", "status", "due_date"],
+            ))
         }
 
         "clickup_list_create" => {
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let mut body = json!({"name": name});
-            if let Some(content) = args.get("content").and_then(|v| v.as_str()) { body["content"] = json!(content); }
-            if let Some(due_date) = args.get("due_date").and_then(|v| v.as_i64()) { body["due_date"] = json!(due_date); }
-            if let Some(status) = args.get("status").and_then(|v| v.as_str()) { body["status"] = json!(status); }
+            if let Some(content) = args.get("content").and_then(|v| v.as_str()) {
+                body["content"] = json!(content);
+            }
+            if let Some(due_date) = args.get("due_date").and_then(|v| v.as_i64()) {
+                body["due_date"] = json!(due_date);
+            }
+            if let Some(status) = args.get("status").and_then(|v| v.as_str()) {
+                body["status"] = json!(status);
+            }
             let path = if let Some(folder_id) = args.get("folder_id").and_then(|v| v.as_str()) {
                 format!("/v2/folder/{}/list", folder_id)
             } else if let Some(space_id) = args.get("space_id").and_then(|v| v.as_str()) {
@@ -2650,499 +2870,977 @@ async fn dispatch_tool(
         }
 
         "clickup_list_update" => {
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
             let mut body = json!({});
-            if let Some(name) = args.get("name").and_then(|v| v.as_str()) { body["name"] = json!(name); }
-            if let Some(content) = args.get("content").and_then(|v| v.as_str()) { body["content"] = json!(content); }
-            if let Some(due_date) = args.get("due_date").and_then(|v| v.as_i64()) { body["due_date"] = json!(due_date); }
-            if let Some(status) = args.get("status").and_then(|v| v.as_str()) { body["status"] = json!(status); }
-            let resp = client.put(&format!("/v2/list/{}", list_id), &body).await.map_err(|e| e.to_string())?;
-            Ok(compact_items(&[resp], &["id", "name", "task_count", "status"]))
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                body["name"] = json!(name);
+            }
+            if let Some(content) = args.get("content").and_then(|v| v.as_str()) {
+                body["content"] = json!(content);
+            }
+            if let Some(due_date) = args.get("due_date").and_then(|v| v.as_i64()) {
+                body["due_date"] = json!(due_date);
+            }
+            if let Some(status) = args.get("status").and_then(|v| v.as_str()) {
+                body["status"] = json!(status);
+            }
+            let resp = client
+                .put(&format!("/v2/list/{}", list_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(compact_items(
+                &[resp],
+                &["id", "name", "task_count", "status"],
+            ))
         }
 
         "clickup_list_delete" => {
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
-            client.delete(&format!("/v2/list/{}", list_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/list/{}", list_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("List {} deleted", list_id)}))
         }
 
         "clickup_list_add_task" => {
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            client.post(&format!("/v2/list/{}/task/{}", list_id, task_id), &json!({})).await.map_err(|e| e.to_string())?;
+            client
+                .post(
+                    &format!("/v2/list/{}/task/{}", list_id, task_id),
+                    &json!({}),
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Task {} added to list {}", task_id, list_id)}))
         }
 
         "clickup_list_remove_task" => {
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            client.delete(&format!("/v2/list/{}/task/{}", list_id, task_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/list/{}/task/{}", list_id, task_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Task {} removed from list {}", task_id, list_id)}))
         }
 
         "clickup_comment_update" => {
-            let comment_id = args.get("comment_id").and_then(|v| v.as_str())
+            let comment_id = args
+                .get("comment_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: comment_id")?;
-            let text = args.get("text").and_then(|v| v.as_str())
+            let text = args
+                .get("text")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: text")?;
             let mut body = json!({"comment_text": text});
-            if let Some(assignee) = args.get("assignee").and_then(|v| v.as_i64()) { body["assignee"] = json!(assignee); }
-            if let Some(resolved) = args.get("resolved").and_then(|v| v.as_bool()) { body["resolved"] = json!(resolved); }
-            client.put(&format!("/v2/comment/{}", comment_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(assignee) = args.get("assignee").and_then(|v| v.as_i64()) {
+                body["assignee"] = json!(assignee);
+            }
+            if let Some(resolved) = args.get("resolved").and_then(|v| v.as_bool()) {
+                body["resolved"] = json!(resolved);
+            }
+            client
+                .put(&format!("/v2/comment/{}", comment_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Comment {} updated", comment_id)}))
         }
 
         "clickup_comment_delete" => {
-            let comment_id = args.get("comment_id").and_then(|v| v.as_str())
+            let comment_id = args
+                .get("comment_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: comment_id")?;
-            client.delete(&format!("/v2/comment/{}", comment_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/comment/{}", comment_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Comment {} deleted", comment_id)}))
         }
 
         "clickup_task_add_dep" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
             let mut body = json!({});
-            if let Some(dep) = args.get("depends_on").and_then(|v| v.as_str()) { body["depends_on"] = json!(dep); }
-            if let Some(dep) = args.get("dependency_of").and_then(|v| v.as_str()) { body["dependency_of"] = json!(dep); }
-            client.post(&format!("/v2/task/{}/dependency", task_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(dep) = args.get("depends_on").and_then(|v| v.as_str()) {
+                body["depends_on"] = json!(dep);
+            }
+            if let Some(dep) = args.get("dependency_of").and_then(|v| v.as_str()) {
+                body["dependency_of"] = json!(dep);
+            }
+            client
+                .post(&format!("/v2/task/{}/dependency", task_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Dependency added to task {}", task_id)}))
         }
 
         "clickup_task_remove_dep" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
             let mut body = json!({});
-            if let Some(dep) = args.get("depends_on").and_then(|v| v.as_str()) { body["depends_on"] = json!(dep); }
-            if let Some(dep) = args.get("dependency_of").and_then(|v| v.as_str()) { body["dependency_of"] = json!(dep); }
-            client.delete_with_body(&format!("/v2/task/{}/dependency", task_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(dep) = args.get("depends_on").and_then(|v| v.as_str()) {
+                body["depends_on"] = json!(dep);
+            }
+            if let Some(dep) = args.get("dependency_of").and_then(|v| v.as_str()) {
+                body["dependency_of"] = json!(dep);
+            }
+            client
+                .delete_with_body(&format!("/v2/task/{}/dependency", task_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Dependency removed from task {}", task_id)}))
         }
 
         "clickup_task_link" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let links_to = args.get("links_to").and_then(|v| v.as_str())
+            let links_to = args
+                .get("links_to")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: links_to")?;
-            let resp = client.post(&format!("/v2/task/{}/link/{}", task_id, links_to), &json!({})).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(
+                    &format!("/v2/task/{}/link/{}", task_id, links_to),
+                    &json!({}),
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Task {} linked to {}", task_id, links_to), "data": resp}))
         }
 
         "clickup_task_unlink" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let links_to = args.get("links_to").and_then(|v| v.as_str())
+            let links_to = args
+                .get("links_to")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: links_to")?;
-            client.delete(&format!("/v2/task/{}/link/{}", task_id, links_to)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/task/{}/link/{}", task_id, links_to))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Task {} unlinked from {}", task_id, links_to)}))
         }
 
         "clickup_goal_delete" => {
-            let goal_id = args.get("goal_id").and_then(|v| v.as_str())
+            let goal_id = args
+                .get("goal_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: goal_id")?;
-            client.delete(&format!("/v2/goal/{}", goal_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/goal/{}", goal_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Goal {} deleted", goal_id)}))
         }
 
         "clickup_goal_add_kr" => {
-            let goal_id = args.get("goal_id").and_then(|v| v.as_str())
+            let goal_id = args
+                .get("goal_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: goal_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
-            let kr_type = args.get("type").and_then(|v| v.as_str())
+            let kr_type = args
+                .get("type")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: type")?;
-            let steps_start = args.get("steps_start").and_then(|v| v.as_f64())
+            let steps_start = args
+                .get("steps_start")
+                .and_then(|v| v.as_f64())
                 .ok_or("Missing required parameter: steps_start")?;
-            let steps_end = args.get("steps_end").and_then(|v| v.as_f64())
+            let steps_end = args
+                .get("steps_end")
+                .and_then(|v| v.as_f64())
                 .ok_or("Missing required parameter: steps_end")?;
             let mut body = json!({"name": name, "type": kr_type, "steps_start": steps_start, "steps_end": steps_end});
-            if let Some(unit) = args.get("unit").and_then(|v| v.as_str()) { body["unit"] = json!(unit); }
-            if let Some(owners) = args.get("owner_ids") { body["owners"] = owners.clone(); }
-            if let Some(task_ids) = args.get("task_ids") { body["task_ids"] = task_ids.clone(); }
-            if let Some(list_ids) = args.get("list_ids") { body["list_ids"] = list_ids.clone(); }
-            let resp = client.post(&format!("/v2/goal/{}/key_result", goal_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(unit) = args.get("unit").and_then(|v| v.as_str()) {
+                body["unit"] = json!(unit);
+            }
+            if let Some(owners) = args.get("owner_ids") {
+                body["owners"] = owners.clone();
+            }
+            if let Some(task_ids) = args.get("task_ids") {
+                body["task_ids"] = task_ids.clone();
+            }
+            if let Some(list_ids) = args.get("list_ids") {
+                body["list_ids"] = list_ids.clone();
+            }
+            let resp = client
+                .post(&format!("/v2/goal/{}/key_result", goal_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let kr = resp.get("key_result").cloned().unwrap_or(resp);
-            Ok(compact_items(&[kr], &["id", "name", "type", "steps_start", "steps_end", "steps_current"]))
+            Ok(compact_items(
+                &[kr],
+                &[
+                    "id",
+                    "name",
+                    "type",
+                    "steps_start",
+                    "steps_end",
+                    "steps_current",
+                ],
+            ))
         }
 
         "clickup_goal_update_kr" => {
-            let kr_id = args.get("kr_id").and_then(|v| v.as_str())
+            let kr_id = args
+                .get("kr_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: kr_id")?;
             let mut body = json!({});
-            if let Some(v) = args.get("steps_current").and_then(|v| v.as_f64()) { body["steps_current"] = json!(v); }
-            if let Some(v) = args.get("name").and_then(|v| v.as_str()) { body["name"] = json!(v); }
-            if let Some(v) = args.get("unit").and_then(|v| v.as_str()) { body["unit"] = json!(v); }
-            let resp = client.put(&format!("/v2/key_result/{}", kr_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(v) = args.get("steps_current").and_then(|v| v.as_f64()) {
+                body["steps_current"] = json!(v);
+            }
+            if let Some(v) = args.get("name").and_then(|v| v.as_str()) {
+                body["name"] = json!(v);
+            }
+            if let Some(v) = args.get("unit").and_then(|v| v.as_str()) {
+                body["unit"] = json!(v);
+            }
+            let resp = client
+                .put(&format!("/v2/key_result/{}", kr_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let kr = resp.get("key_result").cloned().unwrap_or(resp);
-            Ok(compact_items(&[kr], &["id", "name", "steps_current", "steps_end"]))
+            Ok(compact_items(
+                &[kr],
+                &["id", "name", "steps_current", "steps_end"],
+            ))
         }
 
         "clickup_goal_delete_kr" => {
-            let kr_id = args.get("kr_id").and_then(|v| v.as_str())
+            let kr_id = args
+                .get("kr_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: kr_id")?;
-            client.delete(&format!("/v2/key_result/{}", kr_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/key_result/{}", kr_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Key result {} deleted", kr_id)}))
         }
 
         "clickup_time_get" => {
             let team_id = resolve_workspace(args)?;
-            let timer_id = args.get("timer_id").and_then(|v| v.as_str())
+            let timer_id = args
+                .get("timer_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: timer_id")?;
-            let resp = client.get(&format!("/v2/team/{}/time_entries/{}", team_id, timer_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/team/{}/time_entries/{}", team_id, timer_id))
+                .await
+                .map_err(|e| e.to_string())?;
             let data = resp.get("data").cloned().unwrap_or(resp);
-            Ok(compact_items(&[data], &["id", "task", "duration", "start", "end", "billable"]))
+            Ok(compact_items(
+                &[data],
+                &["id", "task", "duration", "start", "end", "billable"],
+            ))
         }
 
         "clickup_time_create" => {
             let team_id = resolve_workspace(args)?;
-            let start = args.get("start").and_then(|v| v.as_i64())
+            let start = args
+                .get("start")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: start")?;
-            let duration = args.get("duration").and_then(|v| v.as_i64())
+            let duration = args
+                .get("duration")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: duration")?;
             let mut body = json!({"start": start, "duration": duration});
-            if let Some(task_id) = args.get("task_id").and_then(|v| v.as_str()) { body["tid"] = json!(task_id); }
-            if let Some(desc) = args.get("description").and_then(|v| v.as_str()) { body["description"] = json!(desc); }
-            if let Some(billable) = args.get("billable").and_then(|v| v.as_bool()) { body["billable"] = json!(billable); }
-            let resp = client.post(&format!("/v2/team/{}/time_entries", team_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(task_id) = args.get("task_id").and_then(|v| v.as_str()) {
+                body["tid"] = json!(task_id);
+            }
+            if let Some(desc) = args.get("description").and_then(|v| v.as_str()) {
+                body["description"] = json!(desc);
+            }
+            if let Some(billable) = args.get("billable").and_then(|v| v.as_bool()) {
+                body["billable"] = json!(billable);
+            }
+            let resp = client
+                .post(&format!("/v2/team/{}/time_entries", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let data = resp.get("data").cloned().unwrap_or(resp);
-            Ok(compact_items(&[data], &["id", "task", "duration", "start", "billable"]))
+            Ok(compact_items(
+                &[data],
+                &["id", "task", "duration", "start", "billable"],
+            ))
         }
 
         "clickup_time_update" => {
             let team_id = resolve_workspace(args)?;
-            let timer_id = args.get("timer_id").and_then(|v| v.as_str())
+            let timer_id = args
+                .get("timer_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: timer_id")?;
             let mut body = json!({});
-            if let Some(start) = args.get("start").and_then(|v| v.as_i64()) { body["start"] = json!(start); }
-            if let Some(duration) = args.get("duration").and_then(|v| v.as_i64()) { body["duration"] = json!(duration); }
-            if let Some(desc) = args.get("description").and_then(|v| v.as_str()) { body["description"] = json!(desc); }
-            if let Some(billable) = args.get("billable").and_then(|v| v.as_bool()) { body["billable"] = json!(billable); }
-            let resp = client.put(&format!("/v2/team/{}/time_entries/{}", team_id, timer_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(start) = args.get("start").and_then(|v| v.as_i64()) {
+                body["start"] = json!(start);
+            }
+            if let Some(duration) = args.get("duration").and_then(|v| v.as_i64()) {
+                body["duration"] = json!(duration);
+            }
+            if let Some(desc) = args.get("description").and_then(|v| v.as_str()) {
+                body["description"] = json!(desc);
+            }
+            if let Some(billable) = args.get("billable").and_then(|v| v.as_bool()) {
+                body["billable"] = json!(billable);
+            }
+            let resp = client
+                .put(
+                    &format!("/v2/team/{}/time_entries/{}", team_id, timer_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             let data = resp.get("data").cloned().unwrap_or(resp);
-            Ok(compact_items(&[data], &["id", "task", "duration", "start", "billable"]))
+            Ok(compact_items(
+                &[data],
+                &["id", "task", "duration", "start", "billable"],
+            ))
         }
 
         "clickup_time_delete" => {
             let team_id = resolve_workspace(args)?;
-            let timer_id = args.get("timer_id").and_then(|v| v.as_str())
+            let timer_id = args
+                .get("timer_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: timer_id")?;
-            client.delete(&format!("/v2/team/{}/time_entries/{}", team_id, timer_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/team/{}/time_entries/{}", team_id, timer_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Time entry {} deleted", timer_id)}))
         }
 
         "clickup_view_get" => {
-            let view_id = args.get("view_id").and_then(|v| v.as_str())
+            let view_id = args
+                .get("view_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: view_id")?;
-            let resp = client.get(&format!("/v2/view/{}", view_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/view/{}", view_id))
+                .await
+                .map_err(|e| e.to_string())?;
             let view = resp.get("view").cloned().unwrap_or(resp);
             Ok(compact_items(&[view], &["id", "name", "type"]))
         }
 
         "clickup_view_create" => {
-            let scope = args.get("scope").and_then(|v| v.as_str())
+            let scope = args
+                .get("scope")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: scope")?;
-            let scope_id = args.get("scope_id").and_then(|v| v.as_str())
+            let scope_id = args
+                .get("scope_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: scope_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
-            let view_type = args.get("type").and_then(|v| v.as_str())
+            let view_type = args
+                .get("type")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: type")?;
             let body = json!({"name": name, "type": view_type});
-            let resp = client.post(&format!("/v2/{}/{}/view", scope, scope_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(&format!("/v2/{}/{}/view", scope, scope_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let view = resp.get("view").cloned().unwrap_or(resp);
             Ok(compact_items(&[view], &["id", "name", "type"]))
         }
 
         "clickup_view_update" => {
-            let view_id = args.get("view_id").and_then(|v| v.as_str())
+            let view_id = args
+                .get("view_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: view_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
-            let view_type = args.get("type").and_then(|v| v.as_str())
+            let view_type = args
+                .get("type")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: type")?;
             let body = json!({"name": name, "type": view_type});
-            let resp = client.put(&format!("/v2/view/{}", view_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .put(&format!("/v2/view/{}", view_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let view = resp.get("view").cloned().unwrap_or(resp);
             Ok(compact_items(&[view], &["id", "name", "type"]))
         }
 
         "clickup_view_delete" => {
-            let view_id = args.get("view_id").and_then(|v| v.as_str())
+            let view_id = args
+                .get("view_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: view_id")?;
-            client.delete(&format!("/v2/view/{}", view_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/view/{}", view_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("View {} deleted", view_id)}))
         }
 
         "clickup_doc_create" => {
             let team_id = resolve_workspace(args)?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let mut body = json!({"name": name});
-            if let Some(parent) = args.get("parent") { body["parent"] = parent.clone(); }
-            let resp = client.post(&format!("/v3/workspaces/{}/docs", team_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(parent) = args.get("parent") {
+                body["parent"] = parent.clone();
+            }
+            let resp = client
+                .post(&format!("/v3/workspaces/{}/docs", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_doc_add_page" => {
             let team_id = resolve_workspace(args)?;
-            let doc_id = args.get("doc_id").and_then(|v| v.as_str())
+            let doc_id = args
+                .get("doc_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: doc_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let mut body = json!({"name": name});
-            if let Some(content) = args.get("content").and_then(|v| v.as_str()) { body["content"] = json!(content); }
-            if let Some(subtitle) = args.get("sub_title").and_then(|v| v.as_str()) { body["sub_title"] = json!(subtitle); }
-            if let Some(parent_page_id) = args.get("parent_page_id").and_then(|v| v.as_str()) { body["parent_page_id"] = json!(parent_page_id); }
-            let resp = client.post(&format!("/v3/workspaces/{}/docs/{}/pages", team_id, doc_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(content) = args.get("content").and_then(|v| v.as_str()) {
+                body["content"] = json!(content);
+            }
+            if let Some(subtitle) = args.get("sub_title").and_then(|v| v.as_str()) {
+                body["sub_title"] = json!(subtitle);
+            }
+            if let Some(parent_page_id) = args.get("parent_page_id").and_then(|v| v.as_str()) {
+                body["parent_page_id"] = json!(parent_page_id);
+            }
+            let resp = client
+                .post(
+                    &format!("/v3/workspaces/{}/docs/{}/pages", team_id, doc_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_doc_edit_page" => {
             let team_id = resolve_workspace(args)?;
-            let doc_id = args.get("doc_id").and_then(|v| v.as_str())
+            let doc_id = args
+                .get("doc_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: doc_id")?;
-            let page_id = args.get("page_id").and_then(|v| v.as_str())
+            let page_id = args
+                .get("page_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: page_id")?;
             let mut body = json!({});
-            if let Some(name) = args.get("name").and_then(|v| v.as_str()) { body["name"] = json!(name); }
-            if let Some(content) = args.get("content").and_then(|v| v.as_str()) { body["content"] = json!(content); }
-            let resp = client.put(&format!("/v3/workspaces/{}/docs/{}/pages/{}", team_id, doc_id, page_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                body["name"] = json!(name);
+            }
+            if let Some(content) = args.get("content").and_then(|v| v.as_str()) {
+                body["content"] = json!(content);
+            }
+            let resp = client
+                .put(
+                    &format!(
+                        "/v3/workspaces/{}/docs/{}/pages/{}",
+                        team_id, doc_id, page_id
+                    ),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_chat_channel_create" => {
             let team_id = resolve_workspace(args)?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let mut body = json!({"name": name});
-            if let Some(desc) = args.get("description").and_then(|v| v.as_str()) { body["description"] = json!(desc); }
-            if let Some(vis) = args.get("visibility").and_then(|v| v.as_str()) { body["visibility"] = json!(vis); }
-            let resp = client.post(&format!("/v3/workspaces/{}/chat/channels", team_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(desc) = args.get("description").and_then(|v| v.as_str()) {
+                body["description"] = json!(desc);
+            }
+            if let Some(vis) = args.get("visibility").and_then(|v| v.as_str()) {
+                body["visibility"] = json!(vis);
+            }
+            let resp = client
+                .post(&format!("/v3/workspaces/{}/chat/channels", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name", "visibility"]))
         }
 
         "clickup_chat_channel_get" => {
             let team_id = resolve_workspace(args)?;
-            let channel_id = args.get("channel_id").and_then(|v| v.as_str())
+            let channel_id = args
+                .get("channel_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: channel_id")?;
-            let resp = client.get(&format!("/v3/workspaces/{}/chat/channels/{}", team_id, channel_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!(
+                    "/v3/workspaces/{}/chat/channels/{}",
+                    team_id, channel_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name", "visibility"]))
         }
 
         "clickup_chat_channel_update" => {
             let team_id = resolve_workspace(args)?;
-            let channel_id = args.get("channel_id").and_then(|v| v.as_str())
+            let channel_id = args
+                .get("channel_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: channel_id")?;
             let mut body = json!({});
-            if let Some(name) = args.get("name").and_then(|v| v.as_str()) { body["name"] = json!(name); }
-            if let Some(desc) = args.get("description").and_then(|v| v.as_str()) { body["description"] = json!(desc); }
-            let resp = client.patch(&format!("/v3/workspaces/{}/chat/channels/{}", team_id, channel_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                body["name"] = json!(name);
+            }
+            if let Some(desc) = args.get("description").and_then(|v| v.as_str()) {
+                body["description"] = json!(desc);
+            }
+            let resp = client
+                .patch(
+                    &format!("/v3/workspaces/{}/chat/channels/{}", team_id, channel_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_chat_channel_delete" => {
             let team_id = resolve_workspace(args)?;
-            let channel_id = args.get("channel_id").and_then(|v| v.as_str())
+            let channel_id = args
+                .get("channel_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: channel_id")?;
-            client.delete(&format!("/v3/workspaces/{}/chat/channels/{}", team_id, channel_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!(
+                    "/v3/workspaces/{}/chat/channels/{}",
+                    team_id, channel_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Channel {} deleted", channel_id)}))
         }
 
         "clickup_chat_message_list" => {
             let team_id = resolve_workspace(args)?;
-            let channel_id = args.get("channel_id").and_then(|v| v.as_str())
+            let channel_id = args
+                .get("channel_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: channel_id")?;
-            let mut path = format!("/v3/workspaces/{}/chat/channels/{}/messages", team_id, channel_id);
+            let mut path = format!(
+                "/v3/workspaces/{}/chat/channels/{}/messages",
+                team_id, channel_id
+            );
             if let Some(cursor) = args.get("cursor").and_then(|v| v.as_str()) {
                 path.push_str(&format!("?cursor={}", cursor));
             }
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let messages = resp.get("messages").and_then(|m| m.as_array()).cloned().unwrap_or_default();
+            let messages = resp
+                .get("messages")
+                .and_then(|m| m.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&messages, &["id", "content", "date"]))
         }
 
         "clickup_chat_message_send" => {
             let team_id = resolve_workspace(args)?;
-            let channel_id = args.get("channel_id").and_then(|v| v.as_str())
+            let channel_id = args
+                .get("channel_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: channel_id")?;
-            let content = args.get("content").and_then(|v| v.as_str())
+            let content = args
+                .get("content")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: content")?;
             let body = json!({"content": content});
-            let resp = client.post(&format!("/v3/workspaces/{}/chat/channels/{}/messages", team_id, channel_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(
+                    &format!(
+                        "/v3/workspaces/{}/chat/channels/{}/messages",
+                        team_id, channel_id
+                    ),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": "Message sent", "id": resp.get("id")}))
         }
 
         "clickup_chat_message_delete" => {
             let team_id = resolve_workspace(args)?;
-            let message_id = args.get("message_id").and_then(|v| v.as_str())
+            let message_id = args
+                .get("message_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: message_id")?;
-            client.delete(&format!("/v3/workspaces/{}/chat/messages/{}", team_id, message_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!(
+                    "/v3/workspaces/{}/chat/messages/{}",
+                    team_id, message_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Message {} deleted", message_id)}))
         }
 
         "clickup_chat_dm" => {
             let team_id = resolve_workspace(args)?;
-            let user_id = args.get("user_id").and_then(|v| v.as_i64())
+            let user_id = args
+                .get("user_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: user_id")?;
-            let content = args.get("content").and_then(|v| v.as_str())
+            let content = args
+                .get("content")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: content")?;
             let body = json!({"user_id": user_id, "content": content});
-            let resp = client.post(&format!("/v3/workspaces/{}/chat/channels/direct_message", team_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(
+                    &format!("/v3/workspaces/{}/chat/channels/direct_message", team_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": "DM sent", "id": resp.get("id")}))
         }
 
         "clickup_webhook_create" => {
             let team_id = resolve_workspace(args)?;
-            let endpoint = args.get("endpoint").and_then(|v| v.as_str())
+            let endpoint = args
+                .get("endpoint")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: endpoint")?;
-            let events = args.get("events").ok_or("Missing required parameter: events")?;
+            let events = args
+                .get("events")
+                .ok_or("Missing required parameter: events")?;
             let mut body = json!({"endpoint": endpoint, "events": events});
-            if let Some(space_id) = args.get("space_id").and_then(|v| v.as_str()) { body["space_id"] = json!(space_id); }
-            if let Some(folder_id) = args.get("folder_id").and_then(|v| v.as_str()) { body["folder_id"] = json!(folder_id); }
-            if let Some(list_id) = args.get("list_id").and_then(|v| v.as_str()) { body["list_id"] = json!(list_id); }
-            if let Some(task_id) = args.get("task_id").and_then(|v| v.as_str()) { body["task_id"] = json!(task_id); }
-            let resp = client.post(&format!("/v2/team/{}/webhook", team_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(space_id) = args.get("space_id").and_then(|v| v.as_str()) {
+                body["space_id"] = json!(space_id);
+            }
+            if let Some(folder_id) = args.get("folder_id").and_then(|v| v.as_str()) {
+                body["folder_id"] = json!(folder_id);
+            }
+            if let Some(list_id) = args.get("list_id").and_then(|v| v.as_str()) {
+                body["list_id"] = json!(list_id);
+            }
+            if let Some(task_id) = args.get("task_id").and_then(|v| v.as_str()) {
+                body["task_id"] = json!(task_id);
+            }
+            let resp = client
+                .post(&format!("/v2/team/{}/webhook", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let webhook = resp.get("webhook").cloned().unwrap_or(resp);
-            Ok(compact_items(&[webhook], &["id", "endpoint", "events", "status"]))
+            Ok(compact_items(
+                &[webhook],
+                &["id", "endpoint", "events", "status"],
+            ))
         }
 
         "clickup_webhook_update" => {
-            let webhook_id = args.get("webhook_id").and_then(|v| v.as_str())
+            let webhook_id = args
+                .get("webhook_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: webhook_id")?;
             let mut body = json!({});
-            if let Some(endpoint) = args.get("endpoint").and_then(|v| v.as_str()) { body["endpoint"] = json!(endpoint); }
-            if let Some(events) = args.get("events") { body["events"] = events.clone(); }
-            if let Some(status) = args.get("status").and_then(|v| v.as_str()) { body["status"] = json!(status); }
-            let resp = client.put(&format!("/v2/webhook/{}", webhook_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(endpoint) = args.get("endpoint").and_then(|v| v.as_str()) {
+                body["endpoint"] = json!(endpoint);
+            }
+            if let Some(events) = args.get("events") {
+                body["events"] = events.clone();
+            }
+            if let Some(status) = args.get("status").and_then(|v| v.as_str()) {
+                body["status"] = json!(status);
+            }
+            let resp = client
+                .put(&format!("/v2/webhook/{}", webhook_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let webhook = resp.get("webhook").cloned().unwrap_or(resp);
-            Ok(compact_items(&[webhook], &["id", "endpoint", "events", "status"]))
+            Ok(compact_items(
+                &[webhook],
+                &["id", "endpoint", "events", "status"],
+            ))
         }
 
         "clickup_webhook_delete" => {
-            let webhook_id = args.get("webhook_id").and_then(|v| v.as_str())
+            let webhook_id = args
+                .get("webhook_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: webhook_id")?;
-            client.delete(&format!("/v2/webhook/{}", webhook_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/webhook/{}", webhook_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Webhook {} deleted", webhook_id)}))
         }
 
         "clickup_checklist_add_item" => {
-            let checklist_id = args.get("checklist_id").and_then(|v| v.as_str())
+            let checklist_id = args
+                .get("checklist_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: checklist_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let mut body = json!({"name": name});
-            if let Some(assignee) = args.get("assignee").and_then(|v| v.as_i64()) { body["assignee"] = json!(assignee); }
-            let resp = client.post(&format!("/v2/checklist/{}/checklist_item", checklist_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(assignee) = args.get("assignee").and_then(|v| v.as_i64()) {
+                body["assignee"] = json!(assignee);
+            }
+            let resp = client
+                .post(
+                    &format!("/v2/checklist/{}/checklist_item", checklist_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             let item = resp.get("checklist").cloned().unwrap_or(resp);
             Ok(compact_items(&[item], &["id", "name"]))
         }
 
         "clickup_checklist_update_item" => {
-            let checklist_id = args.get("checklist_id").and_then(|v| v.as_str())
+            let checklist_id = args
+                .get("checklist_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: checklist_id")?;
-            let item_id = args.get("item_id").and_then(|v| v.as_str())
+            let item_id = args
+                .get("item_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: item_id")?;
             let mut body = json!({});
-            if let Some(name) = args.get("name").and_then(|v| v.as_str()) { body["name"] = json!(name); }
-            if let Some(resolved) = args.get("resolved").and_then(|v| v.as_bool()) { body["resolved"] = json!(resolved); }
-            if let Some(assignee) = args.get("assignee").and_then(|v| v.as_i64()) { body["assignee"] = json!(assignee); }
-            client.put(&format!("/v2/checklist/{}/checklist_item/{}", checklist_id, item_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                body["name"] = json!(name);
+            }
+            if let Some(resolved) = args.get("resolved").and_then(|v| v.as_bool()) {
+                body["resolved"] = json!(resolved);
+            }
+            if let Some(assignee) = args.get("assignee").and_then(|v| v.as_i64()) {
+                body["assignee"] = json!(assignee);
+            }
+            client
+                .put(
+                    &format!("/v2/checklist/{}/checklist_item/{}", checklist_id, item_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Checklist item {} updated", item_id)}))
         }
 
         "clickup_checklist_delete_item" => {
-            let checklist_id = args.get("checklist_id").and_then(|v| v.as_str())
+            let checklist_id = args
+                .get("checklist_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: checklist_id")?;
-            let item_id = args.get("item_id").and_then(|v| v.as_str())
+            let item_id = args
+                .get("item_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: item_id")?;
-            client.delete(&format!("/v2/checklist/{}/checklist_item/{}", checklist_id, item_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!(
+                    "/v2/checklist/{}/checklist_item/{}",
+                    checklist_id, item_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Checklist item {} deleted", item_id)}))
         }
 
         "clickup_user_get" => {
             let team_id = resolve_workspace(args)?;
-            let user_id = args.get("user_id").and_then(|v| v.as_i64())
+            let user_id = args
+                .get("user_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: user_id")?;
-            let resp = client.get(&format!("/v2/team/{}/user/{}", team_id, user_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/team/{}/user/{}", team_id, user_id))
+                .await
+                .map_err(|e| e.to_string())?;
             let member = resp.get("member").cloned().unwrap_or(resp);
             Ok(compact_items(&[member], &["user", "role"]))
         }
 
         "clickup_workspace_seats" => {
             let team_id = resolve_workspace(args)?;
-            let resp = client.get(&format!("/v2/team/{}/seats", team_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/team/{}/seats", team_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!(resp))
         }
 
         "clickup_workspace_plan" => {
             let team_id = resolve_workspace(args)?;
-            let resp = client.get(&format!("/v2/team/{}/plan", team_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/team/{}/plan", team_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!(resp))
         }
 
         "clickup_tag_create" => {
-            let space_id = args.get("space_id").and_then(|v| v.as_str())
+            let space_id = args
+                .get("space_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let mut tag = json!({"name": name});
-            if let Some(fg) = args.get("tag_fg").and_then(|v| v.as_str()) { tag["tag_fg"] = json!(fg); }
-            if let Some(bg) = args.get("tag_bg").and_then(|v| v.as_str()) { tag["tag_bg"] = json!(bg); }
+            if let Some(fg) = args.get("tag_fg").and_then(|v| v.as_str()) {
+                tag["tag_fg"] = json!(fg);
+            }
+            if let Some(bg) = args.get("tag_bg").and_then(|v| v.as_str()) {
+                tag["tag_bg"] = json!(bg);
+            }
             let body = json!({"tag": tag});
-            client.post(&format!("/v2/space/{}/tag", space_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .post(&format!("/v2/space/{}/tag", space_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Tag '{}' created in space {}", name, space_id)}))
         }
 
         "clickup_tag_update" => {
-            let space_id = args.get("space_id").and_then(|v| v.as_str())
+            let space_id = args
+                .get("space_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
-            let tag_name = args.get("tag_name").and_then(|v| v.as_str())
+            let tag_name = args
+                .get("tag_name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: tag_name")?;
             let mut tag = json!({});
-            if let Some(name) = args.get("name").and_then(|v| v.as_str()) { tag["name"] = json!(name); }
-            if let Some(fg) = args.get("tag_fg").and_then(|v| v.as_str()) { tag["tag_fg"] = json!(fg); }
-            if let Some(bg) = args.get("tag_bg").and_then(|v| v.as_str()) { tag["tag_bg"] = json!(bg); }
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                tag["name"] = json!(name);
+            }
+            if let Some(fg) = args.get("tag_fg").and_then(|v| v.as_str()) {
+                tag["tag_fg"] = json!(fg);
+            }
+            if let Some(bg) = args.get("tag_bg").and_then(|v| v.as_str()) {
+                tag["tag_bg"] = json!(bg);
+            }
             let body = json!({"tag": tag});
-            client.put(&format!("/v2/space/{}/tag/{}", space_id, tag_name), &body).await.map_err(|e| e.to_string())?;
+            client
+                .put(&format!("/v2/space/{}/tag/{}", space_id, tag_name), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Tag '{}' updated", tag_name)}))
         }
 
         "clickup_tag_delete" => {
-            let space_id = args.get("space_id").and_then(|v| v.as_str())
+            let space_id = args
+                .get("space_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
-            let tag_name = args.get("tag_name").and_then(|v| v.as_str())
+            let tag_name = args
+                .get("tag_name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: tag_name")?;
-            client.delete(&format!("/v2/space/{}/tag/{}", space_id, tag_name)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/space/{}/tag/{}", space_id, tag_name))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Tag '{}' deleted from space {}", tag_name, space_id)}))
         }
 
         "clickup_field_unset" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let field_id = args.get("field_id").and_then(|v| v.as_str())
+            let field_id = args
+                .get("field_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: field_id")?;
-            client.delete(&format!("/v2/task/{}/field/{}", task_id, field_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/task/{}/field/{}", task_id, field_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Field {} unset on task {}", field_id, task_id)}))
         }
 
         "clickup_attachment_list" => {
             let team_id = resolve_workspace(args)?;
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let resp = client.get(&format!("/v3/workspaces/{}/task/{}/attachments", team_id, task_id)).await.map_err(|e| e.to_string())?;
-            let attachments = resp.get("attachments").and_then(|a| a.as_array()).cloned().unwrap_or_default();
+            let resp = client
+                .get(&format!(
+                    "/v3/workspaces/{}/task/{}/attachments",
+                    team_id, task_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            let attachments = resp
+                .get("attachments")
+                .and_then(|a| a.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&attachments, &["id", "title", "url", "date"]))
         }
 
         "clickup_shared_list" => {
             let team_id = resolve_workspace(args)?;
-            let resp = client.get(&format!("/v2/team/{}/shared", team_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/team/{}/shared", team_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!(resp))
         }
 
@@ -3156,98 +3854,186 @@ async fn dispatch_tool(
                     }
                 }
             }
-            let resp = client.get(&format!("/v2/group?{}", qs)).await.map_err(|e| e.to_string())?;
-            let groups = resp.get("groups").and_then(|g| g.as_array()).cloned().unwrap_or_default();
+            let resp = client
+                .get(&format!("/v2/group?{}", qs))
+                .await
+                .map_err(|e| e.to_string())?;
+            let groups = resp
+                .get("groups")
+                .and_then(|g| g.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&groups, &["id", "name", "members"]))
         }
 
         "clickup_group_create" => {
             let team_id = resolve_workspace(args)?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let mut body = json!({"name": name});
-            if let Some(members) = args.get("member_ids") { body["members"] = members.clone(); }
-            let resp = client.post(&format!("/v2/team/{}/group", team_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(members) = args.get("member_ids") {
+                body["members"] = members.clone();
+            }
+            let resp = client
+                .post(&format!("/v2/team/{}/group", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_group_update" => {
-            let group_id = args.get("group_id").and_then(|v| v.as_str())
+            let group_id = args
+                .get("group_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: group_id")?;
             let mut body = json!({});
-            if let Some(name) = args.get("name").and_then(|v| v.as_str()) { body["name"] = json!(name); }
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                body["name"] = json!(name);
+            }
             if let Some(add) = args.get("add_members") {
                 body["members"] = json!({"add": add, "rem": args.get("rem_members").cloned().unwrap_or(json!([]))});
             } else if let Some(rem) = args.get("rem_members") {
                 body["members"] = json!({"add": [], "rem": rem});
             }
-            let resp = client.put(&format!("/v2/group/{}", group_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .put(&format!("/v2/group/{}", group_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_group_delete" => {
-            let group_id = args.get("group_id").and_then(|v| v.as_str())
+            let group_id = args
+                .get("group_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: group_id")?;
-            client.delete(&format!("/v2/group/{}", group_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/group/{}", group_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Group {} deleted", group_id)}))
         }
 
         "clickup_role_list" => {
             let team_id = resolve_workspace(args)?;
-            let resp = client.get(&format!("/v2/team/{}/customroles", team_id)).await.map_err(|e| e.to_string())?;
-            let roles = resp.get("roles").and_then(|r| r.as_array()).cloned().unwrap_or_default();
+            let resp = client
+                .get(&format!("/v2/team/{}/customroles", team_id))
+                .await
+                .map_err(|e| e.to_string())?;
+            let roles = resp
+                .get("roles")
+                .and_then(|r| r.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&roles, &["id", "name"]))
         }
 
         "clickup_guest_get" => {
             let team_id = resolve_workspace(args)?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
-            let resp = client.get(&format!("/v2/team/{}/guest/{}", team_id, guest_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/team/{}/guest/{}", team_id, guest_id))
+                .await
+                .map_err(|e| e.to_string())?;
             let guest = resp.get("guest").cloned().unwrap_or(resp);
             Ok(compact_items(&[guest], &["user", "role"]))
         }
 
         "clickup_task_time_in_status" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let resp = client.get(&format!("/v2/task/{}/time_in_status", task_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/task/{}/time_in_status", task_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_task_move" => {
             let team_id = resolve_workspace(args)?;
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
-            client.put(&format!("/v3/workspaces/{}/tasks/{}/home_list/{}", team_id, task_id, list_id), &json!({})).await.map_err(|e| e.to_string())?;
+            client
+                .put(
+                    &format!(
+                        "/v3/workspaces/{}/tasks/{}/home_list/{}",
+                        team_id, task_id, list_id
+                    ),
+                    &json!({}),
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Task {} moved to list {}", task_id, list_id)}))
         }
 
         "clickup_task_set_estimate" => {
             let team_id = resolve_workspace(args)?;
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let user_id = args.get("user_id").and_then(|v| v.as_i64())
+            let user_id = args
+                .get("user_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: user_id")?;
-            let time_estimate = args.get("time_estimate").and_then(|v| v.as_i64())
+            let time_estimate = args
+                .get("time_estimate")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: time_estimate")?;
-            let body = json!({"time_estimates": [{"user_id": user_id, "time_estimate": time_estimate}]});
-            client.patch(&format!("/v3/workspaces/{}/tasks/{}/time_estimates_by_user", team_id, task_id), &body).await.map_err(|e| e.to_string())?;
+            let body =
+                json!({"time_estimates": [{"user_id": user_id, "time_estimate": time_estimate}]});
+            client
+                .patch(
+                    &format!(
+                        "/v3/workspaces/{}/tasks/{}/time_estimates_by_user",
+                        team_id, task_id
+                    ),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Time estimate set for task {}", task_id)}))
         }
 
         "clickup_task_replace_estimates" => {
             let team_id = resolve_workspace(args)?;
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let user_id = args.get("user_id").and_then(|v| v.as_i64())
+            let user_id = args
+                .get("user_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: user_id")?;
-            let time_estimate = args.get("time_estimate").and_then(|v| v.as_i64())
+            let time_estimate = args
+                .get("time_estimate")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: time_estimate")?;
-            let body = json!({"time_estimates": [{"user_id": user_id, "time_estimate": time_estimate}]});
-            client.put(&format!("/v3/workspaces/{}/tasks/{}/time_estimates_by_user", team_id, task_id), &body).await.map_err(|e| e.to_string())?;
+            let body =
+                json!({"time_estimates": [{"user_id": user_id, "time_estimate": time_estimate}]});
+            client
+                .put(
+                    &format!(
+                        "/v3/workspaces/{}/tasks/{}/time_estimates_by_user",
+                        team_id, task_id
+                    ),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Time estimates replaced for task {}", task_id)}))
         }
 
@@ -3257,36 +4043,63 @@ async fn dispatch_tool(
         }
 
         "clickup_checklist_update" => {
-            let checklist_id = args.get("checklist_id").and_then(|v| v.as_str())
+            let checklist_id = args
+                .get("checklist_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: checklist_id")?;
             let mut body = json!({});
-            if let Some(name) = args.get("name").and_then(|v| v.as_str()) { body["name"] = json!(name); }
-            if let Some(position) = args.get("position").and_then(|v| v.as_i64()) { body["position"] = json!(position); }
-            let resp = client.put(&format!("/v2/checklist/{}", checklist_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
+                body["name"] = json!(name);
+            }
+            if let Some(position) = args.get("position").and_then(|v| v.as_i64()) {
+                body["position"] = json!(position);
+            }
+            let resp = client
+                .put(&format!("/v2/checklist/{}", checklist_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let checklist = resp.get("checklist").cloned().unwrap_or(resp);
             Ok(compact_items(&[checklist], &["id", "name"]))
         }
 
         "clickup_comment_replies" => {
-            let comment_id = args.get("comment_id").and_then(|v| v.as_str())
+            let comment_id = args
+                .get("comment_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: comment_id")?;
-            let resp = client.get(&format!("/v2/comment/{}/reply", comment_id)).await.map_err(|e| e.to_string())?;
-            let comments = resp.get("comments")
+            let resp = client
+                .get(&format!("/v2/comment/{}/reply", comment_id))
+                .await
+                .map_err(|e| e.to_string())?;
+            let comments = resp
+                .get("comments")
                 .or_else(|| resp.get("replies"))
                 .and_then(|c| c.as_array())
                 .cloned()
                 .unwrap_or_default();
-            Ok(compact_items(&comments, &["id", "user", "date", "comment_text"]))
+            Ok(compact_items(
+                &comments,
+                &["id", "user", "date", "comment_text"],
+            ))
         }
 
         "clickup_comment_reply" => {
-            let comment_id = args.get("comment_id").and_then(|v| v.as_str())
+            let comment_id = args
+                .get("comment_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: comment_id")?;
-            let text = args.get("text").and_then(|v| v.as_str())
+            let text = args
+                .get("text")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: text")?;
             let mut body = json!({"comment_text": text});
-            if let Some(assignee) = args.get("assignee").and_then(|v| v.as_i64()) { body["assignee"] = json!(assignee); }
-            let resp = client.post(&format!("/v2/comment/{}/reply", comment_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(assignee) = args.get("assignee").and_then(|v| v.as_i64()) {
+                body["assignee"] = json!(assignee);
+            }
+            let resp = client
+                .post(&format!("/v2/comment/{}/reply", comment_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": "Reply posted", "id": resp.get("id")}))
         }
 
@@ -3297,165 +4110,312 @@ async fn dispatch_tool(
                 path.push_str(&format!("?include_closed={}", include_closed));
             }
             let resp = client.get(&path).await.map_err(|e| e.to_string())?;
-            let channels = resp.get("channels").and_then(|c| c.as_array()).cloned().unwrap_or_default();
+            let channels = resp
+                .get("channels")
+                .and_then(|c| c.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&channels, &["id", "name", "type"]))
         }
 
         "clickup_chat_channel_followers" => {
             let team_id = resolve_workspace(args)?;
-            let channel_id = args.get("channel_id").and_then(|v| v.as_str())
+            let channel_id = args
+                .get("channel_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: channel_id")?;
-            let resp = client.get(&format!("/v3/workspaces/{}/chat/channels/{}/followers", team_id, channel_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!(
+                    "/v3/workspaces/{}/chat/channels/{}/followers",
+                    team_id, channel_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_chat_channel_members" => {
             let team_id = resolve_workspace(args)?;
-            let channel_id = args.get("channel_id").and_then(|v| v.as_str())
+            let channel_id = args
+                .get("channel_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: channel_id")?;
-            let resp = client.get(&format!("/v3/workspaces/{}/chat/channels/{}/members", team_id, channel_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!(
+                    "/v3/workspaces/{}/chat/channels/{}/members",
+                    team_id, channel_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_chat_message_update" => {
             let team_id = resolve_workspace(args)?;
-            let message_id = args.get("message_id").and_then(|v| v.as_str())
+            let message_id = args
+                .get("message_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: message_id")?;
-            let text = args.get("text").and_then(|v| v.as_str())
+            let text = args
+                .get("text")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: text")?;
             let body = json!({"content": text});
-            client.patch(&format!("/v3/workspaces/{}/chat/messages/{}", team_id, message_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .patch(
+                    &format!("/v3/workspaces/{}/chat/messages/{}", team_id, message_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Message {} updated", message_id)}))
         }
 
         "clickup_chat_reaction_list" => {
             let team_id = resolve_workspace(args)?;
-            let message_id = args.get("message_id").and_then(|v| v.as_str())
+            let message_id = args
+                .get("message_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: message_id")?;
-            let resp = client.get(&format!("/v3/workspaces/{}/chat/messages/{}/reactions", team_id, message_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!(
+                    "/v3/workspaces/{}/chat/messages/{}/reactions",
+                    team_id, message_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_chat_reaction_add" => {
             let team_id = resolve_workspace(args)?;
-            let message_id = args.get("message_id").and_then(|v| v.as_str())
+            let message_id = args
+                .get("message_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: message_id")?;
-            let emoji = args.get("emoji").and_then(|v| v.as_str())
+            let emoji = args
+                .get("emoji")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: emoji")?;
             let body = json!({"emoji": emoji});
-            client.post(&format!("/v3/workspaces/{}/chat/messages/{}/reactions", team_id, message_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .post(
+                    &format!(
+                        "/v3/workspaces/{}/chat/messages/{}/reactions",
+                        team_id, message_id
+                    ),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Reaction '{}' added to message {}", emoji, message_id)}))
         }
 
         "clickup_chat_reaction_remove" => {
             let team_id = resolve_workspace(args)?;
-            let message_id = args.get("message_id").and_then(|v| v.as_str())
+            let message_id = args
+                .get("message_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: message_id")?;
-            let emoji = args.get("emoji").and_then(|v| v.as_str())
+            let emoji = args
+                .get("emoji")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: emoji")?;
-            client.delete(&format!("/v3/workspaces/{}/chat/messages/{}/reactions/{}", team_id, message_id, emoji)).await.map_err(|e| e.to_string())?;
-            Ok(json!({"message": format!("Reaction '{}' removed from message {}", emoji, message_id)}))
+            client
+                .delete(&format!(
+                    "/v3/workspaces/{}/chat/messages/{}/reactions/{}",
+                    team_id, message_id, emoji
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(
+                json!({"message": format!("Reaction '{}' removed from message {}", emoji, message_id)}),
+            )
         }
 
         "clickup_chat_reply_list" => {
             let team_id = resolve_workspace(args)?;
-            let message_id = args.get("message_id").and_then(|v| v.as_str())
+            let message_id = args
+                .get("message_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: message_id")?;
-            let resp = client.get(&format!("/v3/workspaces/{}/chat/messages/{}/replies", team_id, message_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!(
+                    "/v3/workspaces/{}/chat/messages/{}/replies",
+                    team_id, message_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_chat_reply_send" => {
             let team_id = resolve_workspace(args)?;
-            let message_id = args.get("message_id").and_then(|v| v.as_str())
+            let message_id = args
+                .get("message_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: message_id")?;
-            let text = args.get("text").and_then(|v| v.as_str())
+            let text = args
+                .get("text")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: text")?;
             let body = json!({"content": text});
-            let resp = client.post(&format!("/v3/workspaces/{}/chat/messages/{}/replies", team_id, message_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(
+                    &format!(
+                        "/v3/workspaces/{}/chat/messages/{}/replies",
+                        team_id, message_id
+                    ),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": "Reply sent", "id": resp.get("id")}))
         }
 
         "clickup_chat_tagged_users" => {
             let team_id = resolve_workspace(args)?;
-            let message_id = args.get("message_id").and_then(|v| v.as_str())
+            let message_id = args
+                .get("message_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: message_id")?;
-            let resp = client.get(&format!("/v3/workspaces/{}/chat/messages/{}/tagged_users", team_id, message_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!(
+                    "/v3/workspaces/{}/chat/messages/{}/tagged_users",
+                    team_id, message_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_time_current" => {
             let team_id = resolve_workspace(args)?;
-            let resp = client.get(&format!("/v2/team/{}/time_entries/current", team_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!("/v2/team/{}/time_entries/current", team_id))
+                .await
+                .map_err(|e| e.to_string())?;
             let data = resp.get("data").cloned().unwrap_or(resp);
-            Ok(compact_items(&[data], &["id", "task", "duration", "start", "billable"]))
+            Ok(compact_items(
+                &[data],
+                &["id", "task", "duration", "start", "billable"],
+            ))
         }
 
         "clickup_time_tags" => {
             let team_id = resolve_workspace(args)?;
-            let resp = client.get(&format!("/v2/team/{}/time_entries/tags", team_id)).await.map_err(|e| e.to_string())?;
-            let tags = resp.get("data").and_then(|d| d.as_array()).cloned().unwrap_or_default();
+            let resp = client
+                .get(&format!("/v2/team/{}/time_entries/tags", team_id))
+                .await
+                .map_err(|e| e.to_string())?;
+            let tags = resp
+                .get("data")
+                .and_then(|d| d.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&tags, &["name"]))
         }
 
         "clickup_time_add_tags" => {
             let team_id = resolve_workspace(args)?;
-            let entry_ids = args.get("entry_ids").and_then(|v| v.as_array())
+            let entry_ids = args
+                .get("entry_ids")
+                .and_then(|v| v.as_array())
                 .ok_or("Missing required parameter: entry_ids")?;
-            let tag_names = args.get("tag_names").and_then(|v| v.as_array())
+            let tag_names = args
+                .get("tag_names")
+                .and_then(|v| v.as_array())
                 .ok_or("Missing required parameter: tag_names")?;
-            let tags: Vec<Value> = tag_names.iter()
+            let tags: Vec<Value> = tag_names
+                .iter()
                 .filter_map(|n| n.as_str())
                 .map(|n| json!({"name": n}))
                 .collect();
             let body = json!({"time_entry_ids": entry_ids, "tags": tags});
-            client.post(&format!("/v2/team/{}/time_entries/tags", team_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .post(&format!("/v2/team/{}/time_entries/tags", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": "Tags added to time entries"}))
         }
 
         "clickup_time_remove_tags" => {
             let team_id = resolve_workspace(args)?;
-            let entry_ids = args.get("entry_ids").and_then(|v| v.as_array())
+            let entry_ids = args
+                .get("entry_ids")
+                .and_then(|v| v.as_array())
                 .ok_or("Missing required parameter: entry_ids")?;
-            let tag_names = args.get("tag_names").and_then(|v| v.as_array())
+            let tag_names = args
+                .get("tag_names")
+                .and_then(|v| v.as_array())
                 .ok_or("Missing required parameter: tag_names")?;
-            let tags: Vec<Value> = tag_names.iter()
+            let tags: Vec<Value> = tag_names
+                .iter()
                 .filter_map(|n| n.as_str())
                 .map(|n| json!({"name": n}))
                 .collect();
             let body = json!({"time_entry_ids": entry_ids, "tags": tags});
-            client.delete_with_body(&format!("/v2/team/{}/time_entries/tags", team_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .delete_with_body(&format!("/v2/team/{}/time_entries/tags", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": "Tags removed from time entries"}))
         }
 
         "clickup_time_rename_tag" => {
             let team_id = resolve_workspace(args)?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
-            let new_name = args.get("new_name").and_then(|v| v.as_str())
+            let new_name = args
+                .get("new_name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: new_name")?;
             let body = json!({"name": name, "new_name": new_name});
-            client.put(&format!("/v2/team/{}/time_entries/tags", team_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .put(&format!("/v2/team/{}/time_entries/tags", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Tag '{}' renamed to '{}'", name, new_name)}))
         }
 
         "clickup_time_history" => {
             let team_id = resolve_workspace(args)?;
-            let timer_id = args.get("timer_id").and_then(|v| v.as_str())
+            let timer_id = args
+                .get("timer_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: timer_id")?;
-            let resp = client.get(&format!("/v2/team/{}/time_entries/{}/history", team_id, timer_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!(
+                    "/v2/team/{}/time_entries/{}/history",
+                    team_id, timer_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_guest_invite" => {
             let team_id = resolve_workspace(args)?;
-            let email = args.get("email").and_then(|v| v.as_str())
+            let email = args
+                .get("email")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: email")?;
             let mut body = json!({"email": email});
-            if let Some(v) = args.get("can_edit_tags").and_then(|v| v.as_bool()) { body["can_edit_tags"] = json!(v); }
-            if let Some(v) = args.get("can_see_time_spent").and_then(|v| v.as_bool()) { body["can_see_time_spent"] = json!(v); }
-            if let Some(v) = args.get("can_create_views").and_then(|v| v.as_bool()) { body["can_create_views"] = json!(v); }
-            let resp = client.post(&format!("/v2/team/{}/guest", team_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(v) = args.get("can_edit_tags").and_then(|v| v.as_bool()) {
+                body["can_edit_tags"] = json!(v);
+            }
+            if let Some(v) = args.get("can_see_time_spent").and_then(|v| v.as_bool()) {
+                body["can_see_time_spent"] = json!(v);
+            }
+            if let Some(v) = args.get("can_create_views").and_then(|v| v.as_bool()) {
+                body["can_create_views"] = json!(v);
+            }
+            let resp = client
+                .post(&format!("/v2/team/{}/guest", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let guest = resp.get("guest").cloned().unwrap_or(resp);
             let user = guest.get("user").cloned().unwrap_or(guest);
             Ok(compact_items(&[user], &["id", "email"]))
@@ -3463,94 +4423,168 @@ async fn dispatch_tool(
 
         "clickup_guest_update" => {
             let team_id = resolve_workspace(args)?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
             let mut body = json!({});
-            if let Some(v) = args.get("can_edit_tags").and_then(|v| v.as_bool()) { body["can_edit_tags"] = json!(v); }
-            if let Some(v) = args.get("can_see_time_spent").and_then(|v| v.as_bool()) { body["can_see_time_spent"] = json!(v); }
-            if let Some(v) = args.get("can_create_views").and_then(|v| v.as_bool()) { body["can_create_views"] = json!(v); }
-            client.put(&format!("/v2/team/{}/guest/{}", team_id, guest_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(v) = args.get("can_edit_tags").and_then(|v| v.as_bool()) {
+                body["can_edit_tags"] = json!(v);
+            }
+            if let Some(v) = args.get("can_see_time_spent").and_then(|v| v.as_bool()) {
+                body["can_see_time_spent"] = json!(v);
+            }
+            if let Some(v) = args.get("can_create_views").and_then(|v| v.as_bool()) {
+                body["can_create_views"] = json!(v);
+            }
+            client
+                .put(&format!("/v2/team/{}/guest/{}", team_id, guest_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Guest {} updated", guest_id)}))
         }
 
         "clickup_guest_remove" => {
             let team_id = resolve_workspace(args)?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
-            client.delete(&format!("/v2/team/{}/guest/{}", team_id, guest_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/team/{}/guest/{}", team_id, guest_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Guest {} removed", guest_id)}))
         }
 
         "clickup_guest_share_task" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
-            let permission = args.get("permission").and_then(|v| v.as_str())
+            let permission = args
+                .get("permission")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: permission")?;
             let body = json!({"permission_level": permission});
-            client.post(&format!("/v2/task/{}/guest/{}", task_id, guest_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .post(&format!("/v2/task/{}/guest/{}", task_id, guest_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Task {} shared with guest {}", task_id, guest_id)}))
         }
 
         "clickup_guest_unshare_task" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
-            client.delete(&format!("/v2/task/{}/guest/{}", task_id, guest_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/task/{}/guest/{}", task_id, guest_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Guest {} unshared from task {}", guest_id, task_id)}))
         }
 
         "clickup_guest_share_list" => {
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
-            let permission = args.get("permission").and_then(|v| v.as_str())
+            let permission = args
+                .get("permission")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: permission")?;
             let body = json!({"permission_level": permission});
-            client.post(&format!("/v2/list/{}/guest/{}", list_id, guest_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .post(&format!("/v2/list/{}/guest/{}", list_id, guest_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("List {} shared with guest {}", list_id, guest_id)}))
         }
 
         "clickup_guest_unshare_list" => {
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
-            client.delete(&format!("/v2/list/{}/guest/{}", list_id, guest_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/list/{}/guest/{}", list_id, guest_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Guest {} unshared from list {}", guest_id, list_id)}))
         }
 
         "clickup_guest_share_folder" => {
-            let folder_id = args.get("folder_id").and_then(|v| v.as_str())
+            let folder_id = args
+                .get("folder_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: folder_id")?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
-            let permission = args.get("permission").and_then(|v| v.as_str())
+            let permission = args
+                .get("permission")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: permission")?;
             let body = json!({"permission_level": permission});
-            client.post(&format!("/v2/folder/{}/guest/{}", folder_id, guest_id), &body).await.map_err(|e| e.to_string())?;
+            client
+                .post(
+                    &format!("/v2/folder/{}/guest/{}", folder_id, guest_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Folder {} shared with guest {}", folder_id, guest_id)}))
         }
 
         "clickup_guest_unshare_folder" => {
-            let folder_id = args.get("folder_id").and_then(|v| v.as_str())
+            let folder_id = args
+                .get("folder_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: folder_id")?;
-            let guest_id = args.get("guest_id").and_then(|v| v.as_i64())
+            let guest_id = args
+                .get("guest_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: guest_id")?;
-            client.delete(&format!("/v2/folder/{}/guest/{}", folder_id, guest_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/folder/{}/guest/{}", folder_id, guest_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("Guest {} unshared from folder {}", guest_id, folder_id)}))
         }
 
         "clickup_user_invite" => {
             let team_id = resolve_workspace(args)?;
-            let email = args.get("email").and_then(|v| v.as_str())
+            let email = args
+                .get("email")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: email")?;
             let mut body = json!({"email": email});
-            if let Some(admin) = args.get("admin").and_then(|v| v.as_bool()) { body["admin"] = json!(admin); }
-            let resp = client.post(&format!("/v2/team/{}/user", team_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(admin) = args.get("admin").and_then(|v| v.as_bool()) {
+                body["admin"] = json!(admin);
+            }
+            let resp = client
+                .post(&format!("/v2/team/{}/user", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             let member = resp.get("member").cloned().unwrap_or(resp);
             let user = member.get("user").cloned().unwrap_or(member);
             Ok(compact_items(&[user], &["id", "username", "email"]))
@@ -3558,39 +4592,69 @@ async fn dispatch_tool(
 
         "clickup_user_update" => {
             let team_id = resolve_workspace(args)?;
-            let user_id = args.get("user_id").and_then(|v| v.as_i64())
+            let user_id = args
+                .get("user_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: user_id")?;
             let mut body = json!({});
-            if let Some(username) = args.get("username").and_then(|v| v.as_str()) { body["username"] = json!(username); }
-            if let Some(admin) = args.get("admin").and_then(|v| v.as_bool()) { body["admin"] = json!(admin); }
-            client.put(&format!("/v2/team/{}/user/{}", team_id, user_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(username) = args.get("username").and_then(|v| v.as_str()) {
+                body["username"] = json!(username);
+            }
+            if let Some(admin) = args.get("admin").and_then(|v| v.as_bool()) {
+                body["admin"] = json!(admin);
+            }
+            client
+                .put(&format!("/v2/team/{}/user/{}", team_id, user_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("User {} updated", user_id)}))
         }
 
         "clickup_user_remove" => {
             let team_id = resolve_workspace(args)?;
-            let user_id = args.get("user_id").and_then(|v| v.as_i64())
+            let user_id = args
+                .get("user_id")
+                .and_then(|v| v.as_i64())
                 .ok_or("Missing required parameter: user_id")?;
-            client.delete(&format!("/v2/team/{}/user/{}", team_id, user_id)).await.map_err(|e| e.to_string())?;
+            client
+                .delete(&format!("/v2/team/{}/user/{}", team_id, user_id))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("User {} removed from workspace", user_id)}))
         }
 
         "clickup_template_apply_task" => {
-            let list_id = args.get("list_id").and_then(|v| v.as_str())
+            let list_id = args
+                .get("list_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: list_id")?;
-            let template_id = args.get("template_id").and_then(|v| v.as_str())
+            let template_id = args
+                .get("template_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: template_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let body = json!({"name": name});
-            let resp = client.post(&format!("/v2/list/{}/taskTemplate/{}", list_id, template_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(
+                    &format!("/v2/list/{}/taskTemplate/{}", list_id, template_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(compact_items(&[resp], &["id", "name"]))
         }
 
         "clickup_template_apply_list" => {
-            let template_id = args.get("template_id").and_then(|v| v.as_str())
+            let template_id = args
+                .get("template_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: template_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let body = json!({"name": name});
             let path = if let Some(folder_id) = args.get("folder_id").and_then(|v| v.as_str()) {
@@ -3605,47 +4669,87 @@ async fn dispatch_tool(
         }
 
         "clickup_template_apply_folder" => {
-            let space_id = args.get("space_id").and_then(|v| v.as_str())
+            let space_id = args
+                .get("space_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: space_id")?;
-            let template_id = args.get("template_id").and_then(|v| v.as_str())
+            let template_id = args
+                .get("template_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: template_id")?;
-            let name = args.get("name").and_then(|v| v.as_str())
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: name")?;
             let body = json!({"name": name});
-            client.post(&format!("/v2/space/{}/folder_template/{}", space_id, template_id), &body).await.map_err(|e| e.to_string())?;
-            Ok(json!({"message": format!("Folder '{}' created from template {}", name, template_id)}))
+            client
+                .post(
+                    &format!("/v2/space/{}/folder_template/{}", space_id, template_id),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
+            Ok(
+                json!({"message": format!("Folder '{}' created from template {}", name, template_id)}),
+            )
         }
 
         "clickup_attachment_upload" => {
-            let task_id = args.get("task_id").and_then(|v| v.as_str())
+            let task_id = args
+                .get("task_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: task_id")?;
-            let file_path = args.get("file_path").and_then(|v| v.as_str())
+            let file_path = args
+                .get("file_path")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: file_path")?;
             let path = format!("/v2/task/{}/attachment", task_id);
-            let resp = client.upload_file(&path, std::path::Path::new(file_path)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .upload_file(&path, std::path::Path::new(file_path))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": "File uploaded", "id": resp.get("id"), "url": resp.get("url")}))
         }
 
         "clickup_task_type_list" => {
             let team_id = resolve_workspace(args)?;
-            let resp = client.get(&format!("/v2/team/{}/custom_item", team_id)).await.map_err(|e| e.to_string())?;
-            let items = resp.get("custom_items").and_then(|i| i.as_array()).cloned().unwrap_or_default();
+            let resp = client
+                .get(&format!("/v2/team/{}/custom_item", team_id))
+                .await
+                .map_err(|e| e.to_string())?;
+            let items = resp
+                .get("custom_items")
+                .and_then(|i| i.as_array())
+                .cloned()
+                .unwrap_or_default();
             Ok(compact_items(&items, &["id", "name", "name_plural"]))
         }
 
         "clickup_doc_get_page" => {
             let team_id = resolve_workspace(args)?;
-            let doc_id = args.get("doc_id").and_then(|v| v.as_str())
+            let doc_id = args
+                .get("doc_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: doc_id")?;
-            let page_id = args.get("page_id").and_then(|v| v.as_str())
+            let page_id = args
+                .get("page_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: page_id")?;
-            let resp = client.get(&format!("/v3/workspaces/{}/docs/{}/pages/{}", team_id, doc_id, page_id)).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .get(&format!(
+                    "/v3/workspaces/{}/docs/{}/pages/{}",
+                    team_id, doc_id, page_id
+                ))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_audit_log_query" => {
             let team_id = resolve_workspace(args)?;
-            let event_type = args.get("type").and_then(|v| v.as_str())
+            let event_type = args
+                .get("type")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: type")?;
             let mut body = json!({"type": event_type});
             if let Some(user_id) = args.get("user_id").and_then(|v| v.as_i64()) {
@@ -3656,19 +4760,37 @@ async fn dispatch_tool(
             } else if let Some(end_date) = args.get("end_date").and_then(|v| v.as_i64()) {
                 body["date_filter"] = json!({"end_date": end_date});
             }
-            let resp = client.post(&format!("/v3/workspaces/{}/auditlogs", team_id), &body).await.map_err(|e| e.to_string())?;
+            let resp = client
+                .post(&format!("/v3/workspaces/{}/auditlogs", team_id), &body)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(resp)
         }
 
         "clickup_acl_update" => {
             let team_id = resolve_workspace(args)?;
-            let object_type = args.get("object_type").and_then(|v| v.as_str())
+            let object_type = args
+                .get("object_type")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: object_type")?;
-            let object_id = args.get("object_id").and_then(|v| v.as_str())
+            let object_id = args
+                .get("object_id")
+                .and_then(|v| v.as_str())
                 .ok_or("Missing required parameter: object_id")?;
             let mut body = json!({});
-            if let Some(private) = args.get("private").and_then(|v| v.as_bool()) { body["private"] = json!(private); }
-            client.patch(&format!("/v3/workspaces/{}/{}/{}/acls", team_id, object_type, object_id), &body).await.map_err(|e| e.to_string())?;
+            if let Some(private) = args.get("private").and_then(|v| v.as_bool()) {
+                body["private"] = json!(private);
+            }
+            client
+                .patch(
+                    &format!(
+                        "/v3/workspaces/{}/{}/{}/acls",
+                        team_id, object_type, object_id
+                    ),
+                    &body,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(json!({"message": format!("ACL updated for {} {}", object_type, object_id)}))
         }
 
@@ -3683,7 +4805,12 @@ pub async fn serve(filter: filter::Filter) -> Result<(), Box<dyn std::error::Err
     let token = std::env::var("CLICKUP_TOKEN")
         .ok()
         .filter(|t| !t.is_empty())
-        .or_else(|| Config::load().ok().map(|c| c.auth.token).filter(|t| !t.is_empty()))
+        .or_else(|| {
+            Config::load()
+                .ok()
+                .map(|c| c.auth.token)
+                .filter(|t| !t.is_empty())
+        })
         .ok_or("No API token. Set CLICKUP_TOKEN env var or run `clickup setup`.")?;
 
     // Resolve workspace: CLICKUP_WORKSPACE env > config file
@@ -3770,10 +4897,7 @@ pub async fn serve(filter: filter::Filter) -> Result<(), Box<dyn std::error::Err
                 if let Some(response) = handle_tools_call_early(&id, &params, &filter) {
                     response
                 } else {
-                    let tool_name = params
-                        .get("name")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                    let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
                     let arguments = params.get("arguments").cloned().unwrap_or(json!({}));
                     let result = call_tool(tool_name, &arguments, &client, &workspace_id).await;
                     ok_response(&id, result)

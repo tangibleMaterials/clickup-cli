@@ -74,10 +74,11 @@ impl ClickUpClient {
                 if status == 204 {
                     return Ok(serde_json::json!({}));
                 }
-                let json: serde_json::Value = resp.json().await.map_err(|e| CliError::ClientError {
-                    message: format!("Failed to parse response: {}", e),
-                    status,
-                })?;
+                let json: serde_json::Value =
+                    resp.json().await.map_err(|e| CliError::ClientError {
+                        message: format!("Failed to parse response: {}", e),
+                        status,
+                    })?;
                 return Ok(json);
             }
 
@@ -167,7 +168,8 @@ impl ClickUpClient {
         path: &str,
         body: &serde_json::Value,
     ) -> Result<serde_json::Value, CliError> {
-        self.request(reqwest::Method::DELETE, path, Some(body)).await
+        self.request(reqwest::Method::DELETE, path, Some(body))
+            .await
     }
 
     pub async fn upload_file(

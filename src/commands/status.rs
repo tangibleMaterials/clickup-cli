@@ -19,7 +19,11 @@ pub async fn execute(cli: &Cli) -> Result<(), CliError> {
             if token.is_empty() {
                 println!("Token:     (not set)");
             } else {
-                let masked = format!("{}...{}", &token[..6.min(token.len())], &token[token.len().saturating_sub(4)..]);
+                let masked = format!(
+                    "{}...{}",
+                    &token[..6.min(token.len())],
+                    &token[token.len().saturating_sub(4)..]
+                );
                 println!("Token:     {}", masked);
             }
             match &config.defaults.workspace_id {

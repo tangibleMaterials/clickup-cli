@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum TimeCommands {
@@ -127,7 +127,10 @@ fn flatten_task_field(mut entry: serde_json::Value) -> serde_json::Value {
     if let Some(obj) = entry.as_object_mut() {
         if let Some(task_val) = obj.get("task").cloned() {
             if let Some(name) = task_val.get("name").and_then(|n| n.as_str()) {
-                obj.insert("task".to_string(), serde_json::Value::String(name.to_string()));
+                obj.insert(
+                    "task".to_string(),
+                    serde_json::Value::String(name.to_string()),
+                );
             }
         }
     }

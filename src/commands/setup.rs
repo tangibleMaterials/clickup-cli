@@ -1,8 +1,8 @@
-use clap::Args;
 use crate::client::ClickUpClient;
 use crate::config::{AuthConfig, Config, DefaultsConfig};
 use crate::error::CliError;
 use crate::Cli;
+use clap::Args;
 use std::io::{self, Write};
 
 #[derive(Args)]
@@ -105,7 +105,10 @@ fn prompt_choice(max: usize) -> Result<usize, CliError> {
         .parse()
         .map_err(|_| CliError::ConfigError("Invalid selection".into()))?;
     if choice < 1 || choice > max {
-        return Err(CliError::ConfigError(format!("Selection must be between 1 and {}", max)));
+        return Err(CliError::ConfigError(format!(
+            "Selection must be between 1 and {}",
+            max
+        )));
     }
     Ok(choice)
 }

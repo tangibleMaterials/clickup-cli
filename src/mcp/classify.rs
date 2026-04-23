@@ -50,35 +50,43 @@ const KNOWN_GROUPS: &[(&str, &str)] = &[
 ];
 
 const READ_VERBS: &[&str] = &[
-    "list", "get", "search", "current", "pages", "followers", "members",
-    "history", "whoami", "check", "replies", "tagged", "query",
+    "list",
+    "get",
+    "search",
+    "current",
+    "pages",
+    "followers",
+    "members",
+    "history",
+    "whoami",
+    "check",
+    "replies",
+    "tagged",
+    "query",
 ];
 
 const WRITE_VERBS: &[&str] = &[
-    "create", "update", "set", "add", "start", "stop", "move", "apply",
-    "invite", "rename", "share", "attach", "link", "reply", "send", "dm",
-    "edit", "upload",
+    "create", "update", "set", "add", "start", "stop", "move", "apply", "invite", "rename",
+    "share", "attach", "link", "reply", "send", "dm", "edit", "upload",
 ];
 
-const DESTRUCTIVE_VERBS: &[&str] = &[
-    "delete", "remove", "unshare", "unlink", "unset",
-];
+const DESTRUCTIVE_VERBS: &[&str] = &["delete", "remove", "unshare", "unlink", "unset"];
 
 /// Tools that don't fit the naming convention. Each entry shortcircuits
 /// the auto-deriver.
 const OVERRIDES: &[(&str, Class, &str)] = &[
-    ("clickup_search",                 Class::Read,  "workspace"),
-    ("clickup_whoami",                 Class::Read,  "auth"),
-    ("clickup_workspace_plan",         Class::Read,  "workspace"),
-    ("clickup_workspace_seats",        Class::Read,  "workspace"),
+    ("clickup_search", Class::Read, "workspace"),
+    ("clickup_whoami", Class::Read, "auth"),
+    ("clickup_workspace_plan", Class::Read, "workspace"),
+    ("clickup_workspace_seats", Class::Read, "workspace"),
     ("clickup_task_replace_estimates", Class::Write, "task"),
-    ("clickup_task_time_in_status",    Class::Read,  "task"),
-    ("clickup_time_tags",              Class::Read,  "time"),
-    ("clickup_template_apply_list",    Class::Write, "template"),
-    ("clickup_doc_get_page",           Class::Read,  "doc"),
-    ("clickup_chat_tagged_users",      Class::Read,  "chat"),
-    ("clickup_view_tasks",             Class::Read,  "view"),
-    ("clickup_guest_share_list",       Class::Write, "guest"),
+    ("clickup_task_time_in_status", Class::Read, "task"),
+    ("clickup_time_tags", Class::Read, "time"),
+    ("clickup_template_apply_list", Class::Write, "template"),
+    ("clickup_doc_get_page", Class::Read, "doc"),
+    ("clickup_chat_tagged_users", Class::Read, "chat"),
+    ("clickup_view_tasks", Class::Read, "view"),
+    ("clickup_guest_share_list", Class::Write, "guest"),
 ];
 
 pub fn classify(tool_name: &str) -> Option<ToolMeta> {
@@ -107,30 +115,65 @@ pub fn classify(tool_name: &str) -> Option<ToolMeta> {
 
     // Step 4: destructive anywhere
     if segments.iter().any(|s| DESTRUCTIVE_VERBS.contains(s)) {
-        return Some(ToolMeta { class: Class::Destructive, group: normalized_group });
+        return Some(ToolMeta {
+            class: Class::Destructive,
+            group: normalized_group,
+        });
     }
 
     // Step 5: trailing verb
     if WRITE_VERBS.contains(&last) {
-        return Some(ToolMeta { class: Class::Write, group: normalized_group });
+        return Some(ToolMeta {
+            class: Class::Write,
+            group: normalized_group,
+        });
     }
     if READ_VERBS.contains(&last) {
-        return Some(ToolMeta { class: Class::Read, group: normalized_group });
+        return Some(ToolMeta {
+            class: Class::Read,
+            group: normalized_group,
+        });
     }
 
     // Step 6: any write segment
     if segments.iter().any(|s| WRITE_VERBS.contains(s)) {
-        return Some(ToolMeta { class: Class::Write, group: normalized_group });
+        return Some(ToolMeta {
+            class: Class::Write,
+            group: normalized_group,
+        });
     }
 
     None
 }
 
 pub const ALL_GROUPS: &[&str] = &[
-    "auth", "workspace", "space", "folder", "list", "task", "checklist",
-    "comment", "tag", "field", "task-type", "attachment", "time", "goal",
-    "view", "member", "user", "chat", "doc", "webhook", "template",
-    "guest", "group", "role", "shared", "audit-log", "acl",
+    "auth",
+    "workspace",
+    "space",
+    "folder",
+    "list",
+    "task",
+    "checklist",
+    "comment",
+    "tag",
+    "field",
+    "task-type",
+    "attachment",
+    "time",
+    "goal",
+    "view",
+    "member",
+    "user",
+    "chat",
+    "doc",
+    "webhook",
+    "template",
+    "guest",
+    "group",
+    "role",
+    "shared",
+    "audit-log",
+    "acl",
 ];
 
 #[cfg(test)]
@@ -139,19 +182,28 @@ mod tests {
 
     #[test]
     fn destructive_wins_over_write_in_same_name() {
-        assert_eq!(classify("clickup_task_remove_tag").unwrap().class, Class::Destructive);
+        assert_eq!(
+            classify("clickup_task_remove_tag").unwrap().class,
+            Class::Destructive
+        );
     }
 
     #[test]
     fn trailing_read_beats_earlier_write() {
         // reply (write verb) appears before list (read verb); trailing wins
-        assert_eq!(classify("clickup_chat_reply_list").unwrap().class, Class::Read);
+        assert_eq!(
+            classify("clickup_chat_reply_list").unwrap().class,
+            Class::Read
+        );
     }
 
     #[test]
     fn write_scan_catches_compound_verbs() {
         assert_eq!(classify("clickup_goal_add_kr").unwrap().class, Class::Write);
-        assert_eq!(classify("clickup_task_add_dep").unwrap().class, Class::Write);
+        assert_eq!(
+            classify("clickup_task_add_dep").unwrap().class,
+            Class::Write
+        );
     }
 
     #[test]
@@ -163,7 +215,10 @@ mod tests {
 
     #[test]
     fn override_table_short_circuits() {
-        assert_eq!(classify("clickup_task_replace_estimates").unwrap().class, Class::Write);
+        assert_eq!(
+            classify("clickup_task_replace_estimates").unwrap().class,
+            Class::Write
+        );
         assert_eq!(classify("clickup_search").unwrap().group, "workspace");
     }
 

@@ -7,7 +7,9 @@ use clickup_cli::mcp::tool_list;
 #[test]
 fn every_tool_classifies() {
     let tools = tool_list();
-    let array = tools.as_array().expect("tool_list must return a JSON array");
+    let array = tools
+        .as_array()
+        .expect("tool_list must return a JSON array");
     assert!(!array.is_empty(), "tool_list is empty");
 
     let mut unclassified: Vec<String> = Vec::new();
@@ -70,7 +72,10 @@ fn default_exposes_all_tools() {
 
 #[test]
 fn read_profile_excludes_writes_and_destructives() {
-    let raw = RawFilter { profile: Some("read".into()), ..RawFilter::default() };
+    let raw = RawFilter {
+        profile: Some("read".into()),
+        ..RawFilter::default()
+    };
     let filter = Filter::resolve(raw).unwrap();
     let names = tool_names_in(&filter);
     assert!(names.iter().all(|n| {
@@ -84,7 +89,10 @@ fn read_profile_excludes_writes_and_destructives() {
 
 #[test]
 fn safe_profile_excludes_destructives_only() {
-    let raw = RawFilter { profile: Some("safe".into()), ..RawFilter::default() };
+    let raw = RawFilter {
+        profile: Some("safe".into()),
+        ..RawFilter::default()
+    };
     let filter = Filter::resolve(raw).unwrap();
     let names = tool_names_in(&filter);
     assert!(names.contains(&"clickup_task_create".to_string()));
@@ -94,7 +102,10 @@ fn safe_profile_excludes_destructives_only() {
 
 #[test]
 fn read_only_flag_equivalent_to_profile_read() {
-    let raw = RawFilter { read_only: true, ..RawFilter::default() };
+    let raw = RawFilter {
+        read_only: true,
+        ..RawFilter::default()
+    };
     let filter = Filter::resolve(raw).unwrap();
     assert_eq!(filter.profile, Profile::Read);
 }
@@ -186,14 +197,20 @@ fn read_only_plus_non_read_profile_errors() {
 
 #[test]
 fn unknown_profile_errors() {
-    let raw = RawFilter { profile: Some("gibberish".into()), ..RawFilter::default() };
+    let raw = RawFilter {
+        profile: Some("gibberish".into()),
+        ..RawFilter::default()
+    };
     let err = Filter::resolve(raw).unwrap_err();
     assert!(matches!(err, FilterError::UnknownProfile { .. }));
 }
 
 #[test]
 fn unknown_group_errors() {
-    let raw = RawFilter { groups: Some(vec!["nope".into()]), ..RawFilter::default() };
+    let raw = RawFilter {
+        groups: Some(vec!["nope".into()]),
+        ..RawFilter::default()
+    };
     let err = Filter::resolve(raw).unwrap_err();
     assert!(matches!(err, FilterError::UnknownGroup { .. }));
 }
@@ -228,7 +245,10 @@ fn read_only_plus_profile_read_is_not_a_conflict() {
 
 #[test]
 fn filtered_tool_list_returns_only_allowed_tools() {
-    let raw = RawFilter { profile: Some("read".into()), ..RawFilter::default() };
+    let raw = RawFilter {
+        profile: Some("read".into()),
+        ..RawFilter::default()
+    };
     let filter = Filter::resolve(raw).unwrap();
     let value = filtered_tool_list(&filter);
     let array = value.as_array().unwrap();
@@ -252,7 +272,10 @@ use serde_json::json;
 
 #[test]
 fn tools_call_rejects_filtered_tool_with_minus_32601() {
-    let raw = RawFilter { profile: Some("read".into()), ..RawFilter::default() };
+    let raw = RawFilter {
+        profile: Some("read".into()),
+        ..RawFilter::default()
+    };
     let filter = Filter::resolve(raw).unwrap();
 
     let id = json!(42);
@@ -266,7 +289,10 @@ fn tools_call_rejects_filtered_tool_with_minus_32601() {
     let message = response["error"]["message"].as_str().unwrap();
     assert!(message.contains("clickup_task_delete"));
     assert!(message.contains("filtered out at startup"));
-    assert!(response.get("result").is_none(), "must be a JSON-RPC error, not a success");
+    assert!(
+        response.get("result").is_none(),
+        "must be a JSON-RPC error, not a success"
+    );
 }
 
 #[test]

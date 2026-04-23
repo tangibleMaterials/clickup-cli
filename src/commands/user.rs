@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum UserCommands {

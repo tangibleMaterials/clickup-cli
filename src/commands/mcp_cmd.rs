@@ -1,6 +1,6 @@
-use clap::Subcommand;
 use crate::error::CliError;
 use crate::mcp::filter::{Filter, RawFilter};
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum McpCommands {
@@ -67,14 +67,11 @@ pub async fn execute(command: McpCommands) -> Result<(), CliError> {
                 profile: profile.or_else(|| env_string("CLICKUP_MCP_PROFILE")),
                 read_only: read_only || env_bool("CLICKUP_MCP_READ_ONLY"),
                 groups: groups.or_else(|| env_list("CLICKUP_MCP_GROUPS")),
-                exclude_groups: exclude_groups
-                    .or_else(|| env_list("CLICKUP_MCP_EXCLUDE_GROUPS")),
+                exclude_groups: exclude_groups.or_else(|| env_list("CLICKUP_MCP_EXCLUDE_GROUPS")),
                 tools: tools.or_else(|| env_list("CLICKUP_MCP_TOOLS")),
-                exclude_tools: exclude_tools
-                    .or_else(|| env_list("CLICKUP_MCP_EXCLUDE_TOOLS")),
+                exclude_tools: exclude_tools.or_else(|| env_list("CLICKUP_MCP_EXCLUDE_TOOLS")),
             };
-            let filter = Filter::resolve(raw)
-                .map_err(|e| CliError::ConfigError(e.to_string()))?;
+            let filter = Filter::resolve(raw).map_err(|e| CliError::ConfigError(e.to_string()))?;
             crate::mcp::serve(filter)
                 .await
                 .map_err(|e| CliError::ConfigError(e.to_string()))

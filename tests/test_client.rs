@@ -30,8 +30,7 @@ async fn test_401_returns_auth_error() {
     Mock::given(method("GET"))
         .and(path("/v2/user"))
         .respond_with(
-            ResponseTemplate::new(401)
-                .set_body_json(serde_json::json!({"err": "Token invalid"})),
+            ResponseTemplate::new(401).set_body_json(serde_json::json!({"err": "Token invalid"})),
         )
         .mount(&server)
         .await;
@@ -49,8 +48,7 @@ async fn test_404_returns_not_found() {
     Mock::given(method("GET"))
         .and(path("/v2/task/bad_id"))
         .respond_with(
-            ResponseTemplate::new(404)
-                .set_body_json(serde_json::json!({"err": "Task not found"})),
+            ResponseTemplate::new(404).set_body_json(serde_json::json!({"err": "Task not found"})),
         )
         .mount(&server)
         .await;
@@ -68,8 +66,7 @@ async fn test_429_returns_rate_limited() {
     Mock::given(method("GET"))
         .and(path("/v2/task/123"))
         .respond_with(
-            ResponseTemplate::new(429)
-                .set_body_json(serde_json::json!({"err": "Rate limited"})),
+            ResponseTemplate::new(429).set_body_json(serde_json::json!({"err": "Rate limited"})),
         )
         .mount(&server)
         .await;
@@ -86,9 +83,7 @@ async fn test_post_sends_body() {
     Mock::given(method("POST"))
         .and(path("/v2/list/123/task"))
         .and(header("Content-Type", "application/json"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": "abc"})),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"id": "abc"})))
         .expect(1)
         .mount(&server)
         .await;
@@ -106,8 +101,7 @@ async fn test_500_returns_server_error() {
     Mock::given(method("GET"))
         .and(path("/v2/user"))
         .respond_with(
-            ResponseTemplate::new(500)
-                .set_body_json(serde_json::json!({"err": "Internal"})),
+            ResponseTemplate::new(500).set_body_json(serde_json::json!({"err": "Internal"})),
         )
         .mount(&server)
         .await;

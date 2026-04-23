@@ -1,9 +1,9 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum TagCommands {
@@ -66,9 +66,7 @@ pub async fn execute(command: TagCommands, cli: &Cli) -> Result<(), CliError> {
 
     match command {
         TagCommands::List { space } => {
-            let resp = client
-                .get(&format!("/v2/space/{}/tag", space))
-                .await?;
+            let resp = client.get(&format!("/v2/space/{}/tag", space)).await?;
             let tags = resp
                 .get("tags")
                 .and_then(|t| t.as_array())

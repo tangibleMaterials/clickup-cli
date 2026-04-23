@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum GoalCommands {
@@ -191,7 +191,10 @@ pub async fn execute(command: GoalCommands, cli: &Cli) -> Result<(), CliError> {
                 body.insert("rem_owners".into(), serde_json::json!([o]));
             }
             let resp = client
-                .put(&format!("/v2/goal/{}", id), &serde_json::Value::Object(body))
+                .put(
+                    &format!("/v2/goal/{}", id),
+                    &serde_json::Value::Object(body),
+                )
                 .await?;
             let goal = resp.get("goal").cloned().unwrap_or(resp);
             output.print_single(&goal, GOAL_FIELDS, "id");
@@ -227,7 +230,11 @@ pub async fn execute(command: GoalCommands, cli: &Cli) -> Result<(), CliError> {
                 .post(&format!("/v2/goal/{}/key_result", goal_id), &body)
                 .await?;
             let kr = resp.get("key_result").cloned().unwrap_or(resp);
-            output.print_single(&kr, &["id", "name", "type", "steps_start", "steps_end"], "id");
+            output.print_single(
+                &kr,
+                &["id", "name", "type", "steps_start", "steps_end"],
+                "id",
+            );
             Ok(())
         }
         GoalCommands::UpdateKr {

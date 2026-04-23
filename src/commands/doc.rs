@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum DocCommands {
@@ -182,9 +182,7 @@ pub async fn execute(command: DocCommands, cli: &Cli) -> Result<(), CliError> {
                 }
                 output.print_items(&pages, PAGE_FIELDS, "id");
             } else {
-                let resp = client
-                    .get(&format!("{}/{}/page_listing", base, id))
-                    .await?;
+                let resp = client.get(&format!("{}/{}/page_listing", base, id)).await?;
                 let mut pages = resp
                     .get("pages")
                     .and_then(|v| v.as_array())

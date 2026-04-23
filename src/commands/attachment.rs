@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum AttachmentCommands {
@@ -42,7 +42,10 @@ pub async fn execute(command: AttachmentCommands, cli: &Cli) -> Result<(), CliEr
         AttachmentCommands::List { task } => {
             let team_id = resolve_workspace(cli)?;
             let resp = client
-                .get(&format!("/v3/workspaces/{}/task/{}/attachments", team_id, task))
+                .get(&format!(
+                    "/v3/workspaces/{}/task/{}/attachments",
+                    team_id, task
+                ))
                 .await?;
             let attachments = resp
                 .get("attachments")

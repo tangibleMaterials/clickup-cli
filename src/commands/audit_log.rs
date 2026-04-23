@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum AuditLogCommands {
@@ -55,10 +55,7 @@ pub async fn execute(command: AuditLogCommands, cli: &Cli) -> Result<(), CliErro
                 body["date_filter"] = serde_json::Value::Object(date_filter);
             }
             let resp = client
-                .post(
-                    &format!("/v3/workspaces/{}/auditlogs", team_id),
-                    &body,
-                )
+                .post(&format!("/v3/workspaces/{}/auditlogs", team_id), &body)
                 .await?;
 
             if cli.output == "json" {

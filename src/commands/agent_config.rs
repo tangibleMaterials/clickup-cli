@@ -1,6 +1,6 @@
-use clap::Subcommand;
 use crate::error::CliError;
 use crate::Cli;
+use clap::Subcommand;
 use std::path::PathBuf;
 
 /// Known AI agent instruction files, checked in order
@@ -87,7 +87,11 @@ pub async fn execute(command: AgentConfigCommands, _cli: &Cli) -> Result<(), Cli
             eprintln!("CLI reference injected into {}", file.display());
             Ok(())
         }
-        AgentConfigCommands::Init { token, workspace, mcp } => {
+        AgentConfigCommands::Init {
+            token,
+            workspace,
+            mcp,
+        } => {
             // Create .clickup.toml
             let config_path = PathBuf::from(".clickup.toml");
             if config_path.exists() {
@@ -148,7 +152,9 @@ pub async fn execute(command: AgentConfigCommands, _cli: &Cli) -> Result<(), Cli
                 } else {
                     eprintln!("MCP config created: .mcp.json");
                 }
-                eprintln!("The MCP server provides 143 tools with token-efficient compact responses.");
+                eprintln!(
+                    "The MCP server provides 143 tools with token-efficient compact responses."
+                );
             }
 
             Ok(())

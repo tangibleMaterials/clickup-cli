@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum SharedCommands {
@@ -20,9 +20,7 @@ pub async fn execute(command: SharedCommands, cli: &Cli) -> Result<(), CliError>
     match command {
         SharedCommands::List => {
             let team_id = resolve_workspace(cli)?;
-            let resp = client
-                .get(&format!("/v2/team/{}/shared", team_id))
-                .await?;
+            let resp = client.get(&format!("/v2/team/{}/shared", team_id)).await?;
 
             if cli.output == "json" {
                 println!("{}", serde_json::to_string_pretty(&resp).unwrap());

@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::config::Config;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum WorkspaceCommands {
@@ -29,10 +29,12 @@ pub fn resolve_workspace(cli: &Cli) -> Result<String, CliError> {
     }
     // 3. Config file
     let config = Config::load()?;
-    config
-        .defaults
-        .workspace_id
-        .ok_or_else(|| CliError::ConfigError("No default workspace. Use --workspace, CLICKUP_WORKSPACE, or run 'clickup setup'".into()))
+    config.defaults.workspace_id.ok_or_else(|| {
+        CliError::ConfigError(
+            "No default workspace. Use --workspace, CLICKUP_WORKSPACE, or run 'clickup setup'"
+                .into(),
+        )
+    })
 }
 
 pub async fn execute(command: WorkspaceCommands, cli: &Cli) -> Result<(), CliError> {
@@ -69,11 +71,15 @@ pub async fn execute(command: WorkspaceCommands, cli: &Cli) -> Result<(), CliErr
                 println!("{}", serde_json::to_string_pretty(&resp).unwrap());
             } else {
                 // seats response has filled_members_seats, empty_members_seats, etc.
-                let filled = resp.get("seats").and_then(|s| s.get("members"))
+                let filled = resp
+                    .get("seats")
+                    .and_then(|s| s.get("members"))
                     .and_then(|m| m.get("filled_members_seats"))
                     .and_then(|v| v.as_u64())
                     .unwrap_or(0);
-                let total = resp.get("seats").and_then(|s| s.get("members"))
+                let total = resp
+                    .get("seats")
+                    .and_then(|s| s.get("members"))
                     .and_then(|m| m.get("total_members_seats"))
                     .and_then(|v| v.as_u64())
                     .or_else(|| {
@@ -95,7 +101,8 @@ pub async fn execute(command: WorkspaceCommands, cli: &Cli) -> Result<(), CliErr
             if cli.output == "json" {
                 println!("{}", serde_json::to_string_pretty(&resp).unwrap());
             } else {
-                let plan_name = resp.get("plan_id")
+                let plan_name = resp
+                    .get("plan_id")
                     .or_else(|| resp.get("plan_name"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("-");

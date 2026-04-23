@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum SpaceCommands {
@@ -105,7 +105,10 @@ pub async fn execute(command: SpaceCommands, cli: &Cli) -> Result<(), CliError> 
                 body.insert("color".into(), serde_json::Value::String(c));
             }
             let resp = client
-                .put(&format!("/v2/space/{}", id), &serde_json::Value::Object(body))
+                .put(
+                    &format!("/v2/space/{}", id),
+                    &serde_json::Value::Object(body),
+                )
                 .await?;
             output.print_single(&resp, &["id", "name", "private"], "id");
             Ok(())

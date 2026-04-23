@@ -1,9 +1,9 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::config::Config;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum AuthCommands {

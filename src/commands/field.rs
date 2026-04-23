@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum FieldCommands {
@@ -87,8 +87,8 @@ pub async fn execute(command: FieldCommands, cli: &Cli) -> Result<(), CliError> 
             value,
         } => {
             // Try to parse value as JSON first, fallback to string
-            let parsed_value: serde_json::Value = serde_json::from_str(&value)
-                .unwrap_or_else(|_| serde_json::Value::String(value));
+            let parsed_value: serde_json::Value =
+                serde_json::from_str(&value).unwrap_or(serde_json::Value::String(value));
             let body = serde_json::json!({ "value": parsed_value });
             let resp = client
                 .post(&format!("/v2/task/{}/field/{}", task_id, field_id), &body)
@@ -100,10 +100,7 @@ pub async fn execute(command: FieldCommands, cli: &Cli) -> Result<(), CliError> 
             client
                 .delete(&format!("/v2/task/{}/field/{}", task_id, field_id))
                 .await?;
-            output.print_message(&format!(
-                "Field {} cleared on task {}",
-                field_id, task_id
-            ));
+            output.print_message(&format!("Field {} cleared on task {}", field_id, task_id));
             Ok(())
         }
     }

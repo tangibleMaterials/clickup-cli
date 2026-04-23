@@ -1,9 +1,9 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum ListCommands {
@@ -84,7 +84,11 @@ pub async fn execute(command: ListCommands, cli: &Cli) -> Result<(), CliError> {
     let default_fields = &["id", "name", "task_count", "status", "due_date"];
 
     match command {
-        ListCommands::List { folder, space, archived } => {
+        ListCommands::List {
+            folder,
+            space,
+            archived,
+        } => {
             let path = match (&folder, &space) {
                 (Some(f), _) => format!("/v2/folder/{}/list?archived={}", f, archived),
                 (_, Some(s)) => format!("/v2/space/{}/list?archived={}", s, archived),
@@ -150,7 +154,10 @@ pub async fn execute(command: ListCommands, cli: &Cli) -> Result<(), CliError> {
                 body.insert("content".into(), serde_json::Value::String(c));
             }
             let resp = client
-                .put(&format!("/v2/list/{}", id), &serde_json::Value::Object(body))
+                .put(
+                    &format!("/v2/list/{}", id),
+                    &serde_json::Value::Object(body),
+                )
                 .await?;
             output.print_single(&resp, default_fields, "id");
             Ok(())
@@ -181,14 +188,12 @@ pub async fn execute(command: ListCommands, cli: &Cli) -> Result<(), CliError> {
 }
 
 fn date_to_ms(date_str: &str) -> Result<String, CliError> {
-    let naive = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-        .map_err(|_| CliError::ClientError {
+    let naive = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").map_err(|_| {
+        CliError::ClientError {
             message: format!("Invalid date '{}'. Use YYYY-MM-DD format.", date_str),
             status: 0,
-        })?;
-    let dt = naive
-        .and_hms_opt(0, 0, 0)
-        .unwrap()
-        .and_utc();
+        }
+    })?;
+    let dt = naive.and_hms_opt(0, 0, 0).unwrap().and_utc();
     Ok((dt.timestamp_millis()).to_string())
 }

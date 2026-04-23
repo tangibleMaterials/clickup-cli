@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum WebhookCommands {
@@ -62,9 +62,7 @@ pub async fn execute(command: WebhookCommands, cli: &Cli) -> Result<(), CliError
     match command {
         WebhookCommands::List => {
             let ws_id = resolve_workspace(cli)?;
-            let resp = client
-                .get(&format!("/v2/team/{}/webhook", ws_id))
-                .await?;
+            let resp = client.get(&format!("/v2/team/{}/webhook", ws_id)).await?;
             let mut webhooks = resp
                 .get("webhooks")
                 .and_then(|v| v.as_array())
@@ -118,9 +116,7 @@ pub async fn execute(command: WebhookCommands, cli: &Cli) -> Result<(), CliError
                 "events": events,
                 "status": status,
             });
-            let resp = client
-                .put(&format!("/v2/webhook/{}", id), &body)
-                .await?;
+            let resp = client.put(&format!("/v2/webhook/{}", id), &body).await?;
             output.print_single(&resp, WEBHOOK_FIELDS, "id");
             Ok(())
         }

@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum TaskCommands {
@@ -389,9 +389,7 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             } else {
                 format!("?{}", params.join("&"))
             };
-            let resp = client
-                .get(&format!("/v2/task/{}{}", id, query))
-                .await?;
+            let resp = client.get(&format!("/v2/task/{}{}", id, query)).await?;
             output.print_single(&resp, TASK_FIELDS, "id");
             Ok(())
         }
@@ -480,7 +478,10 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 body.insert("assignees".into(), serde_json::Value::Object(assignees));
             }
             let resp = client
-                .put(&format!("/v2/task/{}", id), &serde_json::Value::Object(body))
+                .put(
+                    &format!("/v2/task/{}", id),
+                    &serde_json::Value::Object(body),
+                )
                 .await?;
             output.print_single(&resp, TASK_FIELDS, "id");
             Ok(())
@@ -584,7 +585,10 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             });
             let resp = client
                 .patch(
-                    &format!("/v3/workspaces/{}/tasks/{}/time_estimates_by_user", ws_id, id),
+                    &format!(
+                        "/v3/workspaces/{}/tasks/{}/time_estimates_by_user",
+                        ws_id, id
+                    ),
                     &body,
                 )
                 .await?;
@@ -598,7 +602,10 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             });
             let resp = client
                 .put(
-                    &format!("/v3/workspaces/{}/tasks/{}/time_estimates_by_user", ws_id, id),
+                    &format!(
+                        "/v3/workspaces/{}/tasks/{}/time_estimates_by_user",
+                        ws_id, id
+                    ),
                     &body,
                 )
                 .await?;
@@ -615,19 +622,29 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 } else {
                     // Print status durations
                     if let Some(statuses) = resp.get("current_status").and_then(|v| v.as_object()) {
-                        println!("Current: {} ({}ms)",
-                            statuses.get("status").and_then(|v| v.as_str()).unwrap_or("-"),
-                            statuses.get("total_time").and_then(|v| v.as_object())
+                        println!(
+                            "Current: {} ({}ms)",
+                            statuses
+                                .get("status")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("-"),
+                            statuses
+                                .get("total_time")
+                                .and_then(|v| v.as_object())
                                 .and_then(|o| o.get("by_minute"))
                                 .and_then(|v| v.as_u64())
                                 .unwrap_or(0)
                         );
                     }
                     // Print all statuses
-                    if let Some(statuses_arr) = resp.get("status_history").and_then(|v| v.as_array()) {
+                    if let Some(statuses_arr) =
+                        resp.get("status_history").and_then(|v| v.as_array())
+                    {
                         for s in statuses_arr {
                             let name = s.get("status").and_then(|v| v.as_str()).unwrap_or("-");
-                            let time = s.get("total_time").and_then(|v| v.as_object())
+                            let time = s
+                                .get("total_time")
+                                .and_then(|v| v.as_object())
                                 .and_then(|o| o.get("by_minute"))
                                 .and_then(|v| v.as_u64())
                                 .unwrap_or(0);
@@ -639,7 +656,10 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
                 // Bulk mode
                 let task_ids = ids.join(",");
                 let resp = client
-                    .get(&format!("/v2/task/bulk_time_in_status/task_ids?task_ids={}", task_ids))
+                    .get(&format!(
+                        "/v2/task/bulk_time_in_status/task_ids?task_ids={}",
+                        task_ids
+                    ))
                     .await?;
                 if cli.output == "json" {
                     println!("{}", serde_json::to_string_pretty(&resp).unwrap());
@@ -663,11 +683,12 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
 }
 
 fn date_to_ms(date_str: &str) -> Result<String, CliError> {
-    let naive = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-        .map_err(|_| CliError::ClientError {
+    let naive = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").map_err(|_| {
+        CliError::ClientError {
             message: format!("Invalid date '{}'. Use YYYY-MM-DD format.", date_str),
             status: 0,
-        })?;
+        }
+    })?;
     let dt = naive.and_hms_opt(0, 0, 0).unwrap().and_utc();
     Ok((dt.timestamp_millis()).to_string())
 }

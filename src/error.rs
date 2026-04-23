@@ -9,9 +9,15 @@ pub enum CliError {
     #[error("{message}")]
     Forbidden { message: String },
     #[error("{message}")]
-    NotFound { message: String, resource_id: String },
+    NotFound {
+        message: String,
+        resource_id: String,
+    },
     #[error("{message}")]
-    RateLimited { message: String, retry_after: Option<u64> },
+    RateLimited {
+        message: String,
+        retry_after: Option<u64>,
+    },
     #[error("{message}")]
     ServerError { message: String },
     #[error("{0}")]
@@ -71,12 +77,13 @@ impl CliError {
             CliError::AuthError { .. } => {
                 Some("Check your API token, or run 'clickup setup' to reconfigure".into())
             }
-            CliError::Forbidden { .. } => {
-                Some("This feature may require a higher ClickUp plan (Business+, Enterprise)".into())
-            }
-            CliError::NotFound { resource_id, .. } => {
-                Some(format!("Check the ID '{}', or use --custom-task-id if using a custom task ID", resource_id))
-            }
+            CliError::Forbidden { .. } => Some(
+                "This feature may require a higher ClickUp plan (Business+, Enterprise)".into(),
+            ),
+            CliError::NotFound { resource_id, .. } => Some(format!(
+                "Check the ID '{}', or use --custom-task-id if using a custom task ID",
+                resource_id
+            )),
             CliError::RateLimited { retry_after, .. } => {
                 retry_after.map(|s| format!("Rate limited. Retry after {} seconds", s))
             }
