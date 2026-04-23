@@ -79,7 +79,7 @@ Config is saved to `~/.config/clickup-cli/config.toml`.
 ## Verify
 
 ```bash
-clickup --version       # Should show: clickup 0.6.1
+clickup --version       # Should show: clickup 0.8.1
 clickup auth whoami
 clickup status          # Show config, token (masked), workspace
 ```
