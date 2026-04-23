@@ -58,11 +58,24 @@ pub struct RawFilter {
 
 #[derive(Debug)]
 pub enum FilterError {
-    UnknownProfile { name: String },
-    UnknownGroup { name: String, valid: Vec<&'static str> },
-    UnknownTool { name: String, suggestion: Option<String> },
-    ConflictingProfile { profile: String },
-    ToolExcludedByProfile { tool: String, profile: String },
+    UnknownProfile {
+        name: String,
+    },
+    UnknownGroup {
+        name: String,
+        valid: Vec<&'static str>,
+    },
+    UnknownTool {
+        name: String,
+        suggestion: Option<String>,
+    },
+    ConflictingProfile {
+        profile: String,
+    },
+    ToolExcludedByProfile {
+        tool: String,
+        profile: String,
+    },
     EmptyFilter,
 }
 
@@ -80,7 +93,11 @@ impl std::fmt::Display for FilterError {
                 None => write!(f, "unknown tool: {}", name),
             },
             FilterError::ConflictingProfile { profile } => {
-                write!(f, "conflicting profile flags: --read-only and --profile {}", profile)
+                write!(
+                    f,
+                    "conflicting profile flags: --read-only and --profile {}",
+                    profile
+                )
             }
             FilterError::ToolExcludedByProfile { tool, profile } => write!(
                 f,
@@ -88,7 +105,10 @@ impl std::fmt::Display for FilterError {
                 tool, profile, tool
             ),
             FilterError::EmptyFilter => {
-                write!(f, "filter pipeline produced an empty tool set; nothing to expose")
+                write!(
+                    f,
+                    "filter pipeline produced an empty tool set; nothing to expose"
+                )
             }
         }
     }
@@ -127,15 +147,13 @@ impl Filter {
         let profile_label = profile.as_str();
 
         // 2. Validate group inputs.
-        for list in [&raw.groups, &raw.exclude_groups] {
-            if let Some(groups) = list {
-                for g in groups {
-                    if !ALL_GROUPS.contains(&g.as_str()) {
-                        return Err(FilterError::UnknownGroup {
-                            name: g.clone(),
-                            valid: ALL_GROUPS.to_vec(),
-                        });
-                    }
+        for groups in [&raw.groups, &raw.exclude_groups].into_iter().flatten() {
+            for g in groups {
+                if !ALL_GROUPS.contains(&g.as_str()) {
+                    return Err(FilterError::UnknownGroup {
+                        name: g.clone(),
+                        valid: ALL_GROUPS.to_vec(),
+                    });
                 }
             }
         }
@@ -151,19 +169,16 @@ impl Filter {
                     .and_then(|n| classify(n).map(|m| (n.to_string(), m)))
             })
             .collect();
-        let known_names: HashSet<&str> =
-            all_names.iter().map(|(n, _)| n.as_str()).collect();
+        let known_names: HashSet<&str> = all_names.iter().map(|(n, _)| n.as_str()).collect();
 
         // 4. Validate --tools / --exclude-tools names against the full catalog.
-        for list in [&raw.tools, &raw.exclude_tools] {
-            if let Some(tools) = list {
-                for t in tools {
-                    if !known_names.contains(t.as_str()) {
-                        return Err(FilterError::UnknownTool {
-                            name: t.clone(),
-                            suggestion: closest_name(t, &known_names),
-                        });
-                    }
+        for tools in [&raw.tools, &raw.exclude_tools].into_iter().flatten() {
+            for t in tools {
+                if !known_names.contains(t.as_str()) {
+                    return Err(FilterError::UnknownTool {
+                        name: t.clone(),
+                        suggestion: closest_name(t, &known_names),
+                    });
                 }
             }
         }

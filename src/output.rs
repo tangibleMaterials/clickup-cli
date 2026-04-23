@@ -12,13 +12,20 @@ impl OutputConfig {
     pub fn from_cli(mode: &str, fields: &Option<String>, no_header: bool, quiet: bool) -> Self {
         Self {
             mode: mode.to_string(),
-            fields: fields.as_ref().map(|f| f.split(',').map(|s| s.trim().to_string()).collect()),
+            fields: fields
+                .as_ref()
+                .map(|f| f.split(',').map(|s| s.trim().to_string()).collect()),
             no_header,
             quiet,
         }
     }
 
-    pub fn print_items(&self, items: &[serde_json::Value], default_fields: &[&str], id_field: &str) {
+    pub fn print_items(
+        &self,
+        items: &[serde_json::Value],
+        default_fields: &[&str],
+        id_field: &str,
+    ) {
         if self.quiet {
             for item in items {
                 if let Some(id) = item.get(id_field).and_then(|v| v.as_str()) {
@@ -46,10 +53,8 @@ impl OutputConfig {
                     println!("{}", fields.join(","));
                 }
                 for item in items {
-                    let row: Vec<String> = fields
-                        .iter()
-                        .map(|&f| flatten_value(item.get(f)))
-                        .collect();
+                    let row: Vec<String> =
+                        fields.iter().map(|&f| flatten_value(item.get(f))).collect();
                     println!("{}", row.join(","));
                 }
             }
@@ -61,10 +66,8 @@ impl OutputConfig {
                     table.set_header(fields.iter().map(|f| f.to_string()).collect::<Vec<_>>());
                 }
                 for item in items {
-                    let row: Vec<String> = fields
-                        .iter()
-                        .map(|&f| flatten_value(item.get(f)))
-                        .collect();
+                    let row: Vec<String> =
+                        fields.iter().map(|&f| flatten_value(item.get(f))).collect();
                     table.add_row(row);
                 }
                 println!("{}", table);
@@ -73,7 +76,7 @@ impl OutputConfig {
     }
 
     pub fn print_single(&self, item: &serde_json::Value, default_fields: &[&str], id_field: &str) {
-        self.print_items(&[item.clone()], default_fields, id_field);
+        self.print_items(std::slice::from_ref(item), default_fields, id_field);
     }
 
     pub fn print_message(&self, message: &str) {
@@ -132,7 +135,11 @@ pub fn flatten_value(value: Option<&serde_json::Value>) -> String {
                     }
                 })
                 .collect();
-            if items.is_empty() { "-".to_string() } else { items.join(", ") }
+            if items.is_empty() {
+                "-".to_string()
+            } else {
+                items.join(", ")
+            }
         }
         Some(serde_json::Value::Object(obj)) => {
             // Flatten nested objects: status.status, priority.priority

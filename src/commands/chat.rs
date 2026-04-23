@@ -1,10 +1,10 @@
-use clap::Subcommand;
 use crate::client::ClickUpClient;
 use crate::commands::auth::resolve_token;
 use crate::commands::workspace::resolve_workspace;
 use crate::error::CliError;
 use crate::output::OutputConfig;
 use crate::Cli;
+use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum ChatCommands {
@@ -164,9 +164,7 @@ pub async fn execute(command: ChatCommands, cli: &Cli) -> Result<(), CliError> {
             } else {
                 ""
             };
-            let resp = client
-                .get(&format!("{}/channels{}", base, query))
-                .await?;
+            let resp = client.get(&format!("{}/channels{}", base, query)).await?;
             let mut channels = resp
                 .get("channels")
                 .and_then(|v| v.as_array())
@@ -183,16 +181,12 @@ pub async fn execute(command: ChatCommands, cli: &Cli) -> Result<(), CliError> {
             if let Some(v) = visibility {
                 body["visibility"] = serde_json::Value::String(v);
             }
-            let resp = client
-                .post(&format!("{}/channels", base), &body)
-                .await?;
+            let resp = client.post(&format!("{}/channels", base), &body).await?;
             output.print_single(&resp, CHANNEL_FIELDS, "id");
             Ok(())
         }
         ChatCommands::ChannelGet { id } => {
-            let resp = client
-                .get(&format!("{}/channels/{}", base, id))
-                .await?;
+            let resp = client.get(&format!("{}/channels/{}", base, id)).await?;
             output.print_single(&resp, CHANNEL_FIELDS, "id");
             Ok(())
         }
@@ -214,9 +208,7 @@ pub async fn execute(command: ChatCommands, cli: &Cli) -> Result<(), CliError> {
             Ok(())
         }
         ChatCommands::ChannelDelete { id } => {
-            client
-                .delete(&format!("{}/channels/{}", base, id))
-                .await?;
+            client.delete(&format!("{}/channels/{}", base, id)).await?;
             output.print_message(&format!("Channel {} deleted", id));
             Ok(())
         }
@@ -224,22 +216,14 @@ pub async fn execute(command: ChatCommands, cli: &Cli) -> Result<(), CliError> {
             let resp = client
                 .get(&format!("{}/channels/{}/followers", base, id))
                 .await?;
-            if cli.output == "json" {
-                println!("{}", serde_json::to_string_pretty(&resp).unwrap());
-            } else {
-                println!("{}", serde_json::to_string_pretty(&resp).unwrap());
-            }
+            println!("{}", serde_json::to_string_pretty(&resp).unwrap());
             Ok(())
         }
         ChatCommands::ChannelMembers { id } => {
             let resp = client
                 .get(&format!("{}/channels/{}/members", base, id))
                 .await?;
-            if cli.output == "json" {
-                println!("{}", serde_json::to_string_pretty(&resp).unwrap());
-            } else {
-                println!("{}", serde_json::to_string_pretty(&resp).unwrap());
-            }
+            println!("{}", serde_json::to_string_pretty(&resp).unwrap());
             Ok(())
         }
         ChatCommands::Dm { user_ids } => {
@@ -289,9 +273,7 @@ pub async fn execute(command: ChatCommands, cli: &Cli) -> Result<(), CliError> {
             Ok(())
         }
         ChatCommands::MessageDelete { id } => {
-            client
-                .delete(&format!("{}/messages/{}", base, id))
-                .await?;
+            client.delete(&format!("{}/messages/{}", base, id)).await?;
             output.print_message(&format!("Message {} deleted", id));
             Ok(())
         }
@@ -314,7 +296,10 @@ pub async fn execute(command: ChatCommands, cli: &Cli) -> Result<(), CliError> {
             client
                 .delete(&format!("{}/messages/{}/reactions/{}", base, msg_id, emoji))
                 .await?;
-            output.print_message(&format!("Reaction '{}' removed from message {}", emoji, msg_id));
+            output.print_message(&format!(
+                "Reaction '{}' removed from message {}",
+                emoji, msg_id
+            ));
             Ok(())
         }
         ChatCommands::ReplyList { msg_id } => {
