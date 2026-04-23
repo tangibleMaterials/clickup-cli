@@ -51,7 +51,7 @@ exceptions = []
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-highlight = "all-allowed"
+highlight = "all"
 # Duplicate-version exceptions for common transitive-dep churn go here.
 skip = []
 skip-tree = []
