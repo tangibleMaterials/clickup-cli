@@ -80,8 +80,32 @@ jobs:
           name: ${{ matrix.name }}
           path: ${{ matrix.name }}.*
 
-  release:
+  verify-alpine:
     needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download musl artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: clickup-linux-x86_64-musl
+
+      - name: Extract binary
+        run: tar xzf clickup-linux-x86_64-musl.tar.gz
+
+      - name: Set up Alpine chroot
+        uses: jirutka/setup-alpine@v1
+        with:
+          branch: v3.20
+
+      - name: Smoke-test musl binary inside Alpine
+        shell: alpine.sh {0}
+        run: |
+          ./clickup --version
+          ./clickup mcp serve --help | grep -- '--profile'
+          echo "Alpine musl smoke test passed"
+
+  release:
+    needs: [build, verify-alpine]
     runs-on: ubuntu-latest
 
     steps:
