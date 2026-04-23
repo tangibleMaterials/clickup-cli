@@ -42,7 +42,7 @@ Beyond token efficiency, clickup-cli gives AI agents a simple, predictable inter
 npm install -g @nick.bester/clickup-cli
 ```
 
-### macOS (Homebrew)
+### Homebrew (macOS or Linux)
 
 ```bash
 brew tap nicholasbester/clickup-cli
@@ -53,6 +53,8 @@ To upgrade to the latest version:
 ```bash
 brew upgrade clickup-cli
 ```
+
+Works on Linux too — the tap ships native x86_64 and arm64 Linux binaries.
 
 ### macOS / Linux (pre-built binary)
 
@@ -74,6 +76,13 @@ sudo mv clickup /usr/local/bin/
 # Linux ARM64
 curl -L https://github.com/nicholasbester/clickup-cli/releases/latest/download/clickup-linux-arm64.tar.gz | tar xz
 sudo mv clickup /usr/local/bin/
+```
+
+**Alpine / musl Linux:**
+
+```sh
+curl -L https://github.com/nicholasbester/clickup-cli/releases/latest/download/clickup-linux-x86_64-musl.tar.gz | tar xz
+mv clickup /usr/local/bin/
 ```
 
 ### Windows

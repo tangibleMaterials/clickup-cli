@@ -13,7 +13,7 @@ permalink: /install/
 npm install -g @nick.bester/clickup-cli
 ```
 
-## macOS (Homebrew)
+## Homebrew (macOS or Linux)
 
 ```bash
 brew tap nicholasbester/clickup-cli
@@ -21,6 +21,8 @@ brew install clickup-cli
 ```
 
 Upgrade: `brew upgrade clickup-cli`
+
+Works on Linux too — the tap ships native x86_64 and arm64 Linux binaries.
 
 ## macOS / Linux (pre-built binary)
 
@@ -40,6 +42,25 @@ sudo mv clickup /usr/local/bin/
 # Linux ARM64
 curl -L https://github.com/nicholasbester/clickup-cli/releases/latest/download/clickup-linux-arm64.tar.gz | tar xz
 sudo mv clickup /usr/local/bin/
+```
+
+### Alpine / musl Linux
+
+For Alpine-based containers (LibreChat, distroless-ish images, minimal Docker layers) use the statically-linked musl build. It has no libc or TLS runtime dependencies and runs on any Linux distribution, not just Alpine.
+
+```sh
+curl -L https://github.com/nicholasbester/clickup-cli/releases/latest/download/clickup-linux-x86_64-musl.tar.gz | tar xz
+mv clickup /usr/local/bin/
+clickup --version       # Should show: clickup 0.8.2
+```
+
+Or inside a Dockerfile:
+
+```dockerfile
+FROM alpine:3.20
+RUN apk add --no-cache curl tar \
+    && curl -L https://github.com/nicholasbester/clickup-cli/releases/latest/download/clickup-linux-x86_64-musl.tar.gz \
+       | tar xz -C /usr/local/bin/
 ```
 
 ## Windows
