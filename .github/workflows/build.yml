@@ -237,6 +237,7 @@ jobs:
 
             def install
               bin.install "clickup"
+              generate_completions_from_executable(bin/"clickup", "completions")
             end
 
             test do

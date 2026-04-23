@@ -51,6 +51,39 @@ function download(url) {
   });
 }
 
+function tryGenerateCompletions(binPath) {
+  // Shell completions only make sense for global installs. Skip local
+  // installs (the CLI isn't on PATH anyway) and Windows (no uniform
+  // completion story).
+  if (process.platform === "win32") return;
+  if (process.env.npm_config_global !== "true") return;
+
+  const shell = path.basename(process.env.SHELL || "");
+  if (!["bash", "zsh", "fish"].includes(shell)) return;
+
+  try {
+    const output = execFileSync(binPath, ["completions", shell], {
+      encoding: "utf8",
+    });
+    const compDir = path.join(__dirname, "completions");
+    fs.mkdirSync(compDir, { recursive: true });
+    const ext = shell === "fish" ? "fish" : shell;
+    const compFile = path.join(compDir, `clickup.${ext}`);
+    fs.writeFileSync(compFile, output);
+
+    const instructions = {
+      bash: `source ${compFile}   # add this to ~/.bashrc to persist`,
+      zsh: `source ${compFile}   # add this to ~/.zshrc to persist`,
+      fish: `ln -sf ${compFile} ~/.config/fish/completions/clickup.fish   # load on next shell`,
+    };
+
+    console.log(`\nShell completions (${shell}) written to ${compFile}`);
+    console.log(`Enable now:\n  ${instructions[shell]}\n`);
+  } catch (e) {
+    // Completion generation is best-effort; never fail the install.
+  }
+}
+
 async function main() {
   const binDir = path.join(__dirname, "bin");
   const binName = process.platform === "win32" ? "clickup.exe" : "clickup";
@@ -87,6 +120,7 @@ async function main() {
     }
 
     console.log(`clickup-cli v${VERSION} installed successfully`);
+    tryGenerateCompletions(binPath);
   } catch (err) {
     console.error(`Failed to install clickup-cli: ${err.message}`);
     console.error(
