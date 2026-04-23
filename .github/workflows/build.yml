@@ -120,6 +120,7 @@ jobs:
             artifacts/clickup-macos-x86_64.tar.gz
             artifacts/clickup-linux-x86_64.tar.gz
             artifacts/clickup-linux-arm64.tar.gz
+            artifacts/clickup-linux-x86_64-musl.tar.gz
             artifacts/clickup-windows-x86_64.zip
 
       - name: Setup Node.js
