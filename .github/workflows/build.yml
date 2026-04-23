@@ -116,6 +116,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Publish to crates.io
+        if: ${{ !contains(github.ref_name, '-') }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
@@ -139,6 +140,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             artifacts/clickup-macos-arm64.tar.gz
             artifacts/clickup-macos-x86_64.tar.gz
@@ -148,12 +150,14 @@ jobs:
             artifacts/clickup-windows-x86_64.zip
 
       - name: Setup Node.js
+        if: ${{ !contains(github.ref_name, '-') }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
       - name: Publish to npm
+        if: ${{ !contains(github.ref_name, '-') }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
@@ -167,6 +171,7 @@ jobs:
           fi
 
       - name: Setup Node.js (GitHub Packages)
+        if: ${{ !contains(github.ref_name, '-') }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -174,6 +179,7 @@ jobs:
           scope: '@nicholasbester'
 
       - name: Publish to GitHub Packages
+        if: ${{ !contains(github.ref_name, '-') }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -189,6 +195,7 @@ jobs:
           fi
 
       - name: Update Homebrew formula
+        if: ${{ !contains(github.ref_name, '-') }}
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
