@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-18
+
 ### Changed
 - **BREAKING:** `task replace-estimates` (CLI and `clickup_task_replace_estimates` MCP tool) reworked to match ClickUp's spec and remove a data-loss footgun. The old shape `{time_estimates: [{user_id, time_estimate}]}` was wrong on three fronts: the body should be a bare array (no wrapper), the field names are `assignee` and `time` (not `user_id` / `time_estimate`), and accepting only one assignee meant the "replace" operation silently erased every other user's estimate. CLI: `--assignee` / `--time` removed, replaced by repeatable `--estimate ASSIGNEE:MS` (ASSIGNEE accepts a numeric user id or the literal `unassigned`); new `--body` raw JSON escape hatch. MCP: `user_id` / `time_estimate` scalars replaced by an `estimates` array of `{assignee, time}` objects.
 - **BREAKING:** `time rename-tag` (CLI and `clickup_time_rename_tag` MCP tool) now sends the required `tag_bg` and `tag_fg` hex-colour fields per ClickUp's spec. The endpoint marks them required even when the caller only wants to rename; previously omitting them likely 400'd or silently failed. CLI gains required `--tag-bg` and `--tag-fg` flags; MCP gains required `tag_bg` and `tag_fg` schema parameters. Callers who want to keep the existing colours should pass the current hex values.
