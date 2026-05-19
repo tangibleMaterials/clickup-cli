@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-05-19
+
 ### Changed
 - **BREAKING — binary rename (#39):** the shipped binary is no longer named `clickup`. The previous name collided with the official ClickUp desktop app on Linux, which installs a `clickup` binary on `PATH`. From 0.11.0 onwards two binaries ship from the same code:
   - **`clickup-cli`** — the canonical name. Matches the crate name (`cargo install clickup-cli`) and the AUR package (`clickup-cli-bin`). All documentation and help text reference this name.
@@ -138,7 +140,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/nicholasbester/clickup-cli/compare/v0.8.1...v0.8.2
