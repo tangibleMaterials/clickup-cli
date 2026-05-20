@@ -122,10 +122,32 @@ impl ClickUpClient {
 
             // No retry — return error
             let body_text = resp.text().await.unwrap_or_default();
-            let message = serde_json::from_str::<serde_json::Value>(&body_text)
-                .ok()
-                .and_then(|v| v.get("err").and_then(|e| e.as_str()).map(String::from))
-                .unwrap_or_else(|| format!("HTTP {}", status));
+            let body_json: Option<serde_json::Value> = serde_json::from_str(&body_text).ok();
+
+            let message = body_json
+                .as_ref()
+                .and_then(|v| {
+                    v.get("err")
+                        .or_else(|| v.get("message"))
+                        .and_then(|e| e.as_str())
+                        .map(String::from)
+                })
+                .unwrap_or_else(|| {
+                    if body_text.is_empty() {
+                        format!("HTTP {}", status)
+                    } else {
+                        // Limit body size in error message. Slice by chars,
+                        // not bytes, so a multibyte UTF-8 codepoint at the
+                        // 200-byte boundary can't panic this branch.
+                        let truncated = if body_text.chars().count() > 200 {
+                            let head: String = body_text.chars().take(200).collect();
+                            format!("{}...", head)
+                        } else {
+                            body_text
+                        };
+                        format!("HTTP {}: {}", status, truncated)
+                    }
+                });
 
             return match status {
                 401 => Err(CliError::AuthError { message }),

@@ -117,6 +117,9 @@ pub enum TaskCommands {
         /// New description
         #[arg(long)]
         description: Option<String>,
+        /// New time estimate in milliseconds
+        #[arg(long)]
+        time_estimate: Option<u64>,
     },
     /// Delete a task (explicit ID required — never auto-detects from branch)
     Delete {
@@ -188,19 +191,26 @@ pub enum TaskCommands {
         /// Task ID (auto-detected from git branch if omitted)
         id: Option<String>,
     },
-    /// Set per-user time estimate on a task (v3)
+    /// Set time estimate on a task (v2 task-level or v3 per-user)
     #[command(name = "set-estimate")]
     SetEstimate {
-        /// Assignee user ID
+        /// Assignee user ID (v3 per-user estimate). Omit for v2 task-level estimate.
         #[arg(long)]
-        assignee: String,
+        assignee: Option<String>,
         /// Time estimate in milliseconds
         #[arg(long)]
         time: u64,
         /// Task ID (auto-detected from git branch if omitted)
+        #[arg(long)]
         id: Option<String>,
     },
-    /// Replace all per-user time estimates on a task (v3)
+    /// Replace all per-user time estimates on a task (v3).
+    ///
+    /// Requires a Business+ plan: the underlying v3
+    /// `time_estimates_by_user` endpoint is gated to Business and Enterprise
+    /// workspaces. On Free/Unlimited plans the request returns HTTP 400.
+    /// Use `task set-estimate` (without `--assignee`) for the v2 task-level
+    /// `time_estimate` field, which works on every plan.
     #[command(name = "replace-estimates")]
     ReplaceEstimates {
         /// Per-user estimate in the form ASSIGNEE:MS (repeat for each user).
@@ -215,6 +225,7 @@ pub enum TaskCommands {
         #[arg(long)]
         body: Option<String>,
         /// Task ID (auto-detected from git branch if omitted)
+        #[arg(long)]
         id: Option<String>,
     },
 }
@@ -453,6 +464,7 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             add_assignee,
             rem_assignee,
             description,
+            time_estimate,
         } => {
             let task = git::require_task(cli, id.as_deref(), true)?;
             let mut body = serde_json::Map::new();
@@ -467,6 +479,9 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             }
             if let Some(d) = description {
                 body.insert("markdown_content".into(), serde_json::Value::String(d));
+            }
+            if let Some(te) = time_estimate {
+                body.insert("time_estimate".into(), serde_json::json!(te));
             }
             // Assignee add/remove uses nested object
             if add_assignee.is_some() || rem_assignee.is_some() {
@@ -621,19 +636,35 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
         }
         TaskCommands::SetEstimate { id, assignee, time } => {
             let task = git::require_task(cli, id.as_deref(), true)?;
-            let ws_id = resolve_workspace(cli)?;
-            let body = serde_json::json!({
-                "time_estimates": [{"user_id": assignee, "time_estimate": time}]
-            });
-            let resp = client
-                .patch(
-                    &format!(
-                        "/v3/workspaces/{}/tasks/{}/time_estimates_by_user",
-                        ws_id, task.id
-                    ),
-                    &body,
-                )
-                .await?;
+            let resp = if let Some(assignee) = assignee {
+                let ws_id = resolve_workspace(cli)?;
+                let body = serde_json::json!({
+                    "time_estimates": [{"user_id": assignee, "time_estimate": time}]
+                });
+                client
+                    .patch(
+                        &format!(
+                            "/v3/workspaces/{}/tasks/{}/time_estimates_by_user",
+                            ws_id, task.id
+                        ),
+                        &body,
+                    )
+                    .await?
+            } else {
+                let body = serde_json::json!({
+                    "time_estimate": time
+                });
+                let path = if task.is_custom {
+                    let ws_id = resolve_workspace(cli)?;
+                    format!(
+                        "/v2/task/{}?custom_task_ids=true&team_id={}",
+                        task.id, ws_id
+                    )
+                } else {
+                    format!("/v2/task/{}", task.id)
+                };
+                client.put(&path, &body).await?
+            };
             output.print_single(&resp, TASK_FIELDS, "id");
             Ok(())
         }
