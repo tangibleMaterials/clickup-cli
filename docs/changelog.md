@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-05-20
+
+### Fixed
+- npm publish pipeline migrated to OIDC-based Trusted Publishing (#63). v0.12.0's npm/Homebrew/AUR/GitHub Packages publish chain failed because npm rotated all granular access tokens with write access that bypassed 2FA following the "Mini Shai-Hulud" supply-chain attacks — the `NPM_TOKEN` repo secret was invalidated mid-release. v0.12.1 has the same code as v0.12.0 but re-publishes via the new TP flow so all distribution surfaces reach 0.12.x. No `NPM_TOKEN` secret is involved any more; the workflow exchanges GitHub's per-run OIDC token for a short-lived publish credential at publish time.
+
 ## [0.12.0] - 2026-05-20
 
 ### Added
@@ -158,7 +163,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/nicholasbester/clickup-cli/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.1...v0.10.0
