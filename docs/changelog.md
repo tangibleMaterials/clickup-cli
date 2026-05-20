@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-05-20
+
 ### Added
 - MCP pagination support across the 15 tools whose underlying ClickUp endpoint is paginated (#14, #48, #49, #51). Page-based (v2): `clickup_task_list`, `clickup_task_search`, `clickup_view_tasks`, `clickup_template_list` accept optional `page` / `limit` / `all`. Cursor-based (v3): `clickup_doc_list`, `clickup_chat_channel_list`, `clickup_chat_message_list`, `clickup_chat_reply_list`, `clickup_chat_channel_followers`, `clickup_chat_channel_members`, `clickup_chat_reaction_list`, `clickup_chat_tagged_users` accept optional `cursor` / `limit` / `all`. Start-id-based (v2 comments): `clickup_comment_list`, `clickup_comment_replies` accept optional `start` / `start_id` / `limit` / `all`. Body-based (v3 audit log): `clickup_audit_log_query` accepts the existing `page_rows` / `page_timestamp` / `page_direction` plus new `limit` / `all`. The contract is **opt-in and non-breaking**: when no pagination arg is passed, the response is unchanged — a bare compact array, same shape existing MCP clients see today. When ANY pagination arg is passed, the response becomes `{"items": [...], "pagination": {style, page|next_cursor|next_start+next_start_id|next_page_timestamp, has_more, returned, last_page, all}}`. With `all=true` the helper walks pages until the natural termination signal (ClickUp's `last_page=true` for page-based, `next_cursor=null` for cursor-based, page shorter than 25 items for start-id-based, empty response for body-based) or `limit` is reached (hard-capped at 100 pages to prevent runaway loops). Introduces `crate::mcp::pagination` with `PageArgs`, `CursorArgs`, `StartIdArgs`, `BodyPaginationArgs`, `page_dispatch`, `cursor_dispatch`, `start_id_dispatch`, and `body_pagination_dispatch` helpers backed by wiremock-driven tests.
 
@@ -156,7 +158,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Release notes for 0.6.7 and earlier are auto-generated from commit history on the
 [GitHub Releases page](https://github.com/nicholasbester/clickup-cli/releases).
 
-[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/nicholasbester/clickup-cli/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/nicholasbester/clickup-cli/compare/v0.9.0...v0.9.1
