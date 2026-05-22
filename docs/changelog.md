@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-22
+
+### Changed
+- `.clickup.toml` resolution now walks up from the current directory to filesystem root and uses the nearest config file, mirroring how git locates `.git` (#64). Previously the CLI only checked the current directory, so running from any subdirectory of a project silently fell back to the global `~/.config/clickup-cli/config.toml`, which commonly surfaced as a `401 Team not authorized` when the global token belonged to a different workspace. `setup` and `agent-config init` still write to the current directory — only the read path changed.
+
 ## [0.12.1] - 2026-05-20
 
 ### Fixed
