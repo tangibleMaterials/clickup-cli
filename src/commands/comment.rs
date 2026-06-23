@@ -31,8 +31,8 @@ pub enum CommentCommands {
         /// View ID
         #[arg(long, conflicts_with_all = ["task", "list"])]
         view: Option<String>,
-        /// Comment text. Note: ClickUp's v2 comment API does not render markdown; markdown syntax is stored as literal text.
-        #[arg(long)]
+        /// Comment text (use @path to read from a file, @- for stdin, @@ for a literal leading @). Note: ClickUp's v2 comment API does not render markdown; markdown syntax is stored as literal text.
+        #[arg(long, value_parser = crate::input::resolve_value_arg)]
         text: String,
         /// Assignee user ID (task comments only)
         #[arg(long)]
@@ -45,8 +45,8 @@ pub enum CommentCommands {
     Update {
         /// Comment ID
         id: String,
-        /// New comment text. Note: ClickUp's v2 comment API does not render markdown; markdown syntax is stored as literal text.
-        #[arg(long)]
+        /// New comment text (use @path to read from a file, @- for stdin, @@ for a literal leading @). Note: ClickUp's v2 comment API does not render markdown; markdown syntax is stored as literal text.
+        #[arg(long, value_parser = crate::input::resolve_value_arg)]
         text: String,
         /// Mark as resolved
         #[arg(long)]
@@ -69,8 +69,8 @@ pub enum CommentCommands {
     Reply {
         /// Comment ID
         id: String,
-        /// Reply text. Note: ClickUp's v2 comment API does not render markdown; markdown syntax is stored as literal text.
-        #[arg(long)]
+        /// Reply text (use @path to read from a file, @- for stdin, @@ for a literal leading @). Note: ClickUp's v2 comment API does not render markdown; markdown syntax is stored as literal text.
+        #[arg(long, value_parser = crate::input::resolve_value_arg)]
         text: String,
         /// Assignee user ID
         #[arg(long)]

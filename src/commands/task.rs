@@ -64,6 +64,10 @@ pub enum TaskCommands {
         /// Treat ID as custom task ID
         #[arg(long)]
         custom_task_id: bool,
+        /// Include the raw `markdown_description` (preserves inline link URLs that
+        /// the flattened `description`/`text_content` fields drop)
+        #[arg(long)]
+        markdown: bool,
     },
     /// Create a task
     Create {
@@ -73,8 +77,8 @@ pub enum TaskCommands {
         /// Task name
         #[arg(long)]
         name: String,
-        /// Description
-        #[arg(long)]
+        /// Description (use @path to read from a file, @- for stdin, @@ for a literal leading @)
+        #[arg(long, value_parser = crate::input::resolve_value_arg)]
         description: Option<String>,
         /// Status
         #[arg(long)]
@@ -114,12 +118,15 @@ pub enum TaskCommands {
         /// Remove assignee
         #[arg(long)]
         rem_assignee: Option<Vec<String>>,
-        /// New description
-        #[arg(long)]
+        /// New description (use @path to read from a file, @- for stdin, @@ for a literal leading @)
+        #[arg(long, value_parser = crate::input::resolve_value_arg)]
         description: Option<String>,
         /// New time estimate in milliseconds
         #[arg(long)]
         time_estimate: Option<u64>,
+        /// Re-parent: parent task ID (converts this task into a subtask, or moves it between parents)
+        #[arg(long)]
+        parent: Option<String>,
     },
     /// Delete a task (explicit ID required — never auto-detects from branch)
     Delete {
@@ -391,11 +398,15 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             id,
             subtasks,
             custom_task_id,
+            markdown,
         } => {
             let task = git::require_task(cli, id.as_deref(), true)?;
             let mut params = Vec::new();
             if subtasks {
                 params.push("include_subtasks=true".to_string());
+            }
+            if markdown {
+                params.push("include_markdown_description=true".to_string());
             }
             if custom_task_id || task.is_custom {
                 params.push("custom_task_ids=true".to_string());
@@ -410,7 +421,25 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             let resp = client
                 .get(&format!("/v2/task/{}{}", task.id, query))
                 .await?;
-            output.print_single(&resp, TASK_FIELDS, "id");
+            // In json mode the full raw object (including markdown_description) is
+            // printed as-is. For table/csv/json-compact, surface the field by
+            // appending it to whatever columns are in effect — including an
+            // explicit `--fields` list — so `--markdown` reliably shows it rather
+            // than being silently dropped when the user also passes `--fields`.
+            if markdown {
+                let mut effective = output.clone();
+                let mut fields: Vec<String> = effective
+                    .fields
+                    .take()
+                    .unwrap_or_else(|| TASK_FIELDS.iter().map(|s| s.to_string()).collect());
+                if !fields.iter().any(|f| f == "markdown_description") {
+                    fields.push("markdown_description".to_string());
+                }
+                effective.fields = Some(fields);
+                effective.print_single(&resp, TASK_FIELDS, "id");
+            } else {
+                output.print_single(&resp, TASK_FIELDS, "id");
+            }
             Ok(())
         }
         TaskCommands::Create {
@@ -465,6 +494,7 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             rem_assignee,
             description,
             time_estimate,
+            parent,
         } => {
             let task = git::require_task(cli, id.as_deref(), true)?;
             let mut body = serde_json::Map::new();
@@ -482,6 +512,9 @@ pub async fn execute(command: TaskCommands, cli: &Cli) -> Result<(), CliError> {
             }
             if let Some(te) = time_estimate {
                 body.insert("time_estimate".into(), serde_json::json!(te));
+            }
+            if let Some(p) = parent {
+                body.insert("parent".into(), serde_json::Value::String(p));
             }
             // Assignee add/remove uses nested object
             if add_assignee.is_some() || rem_assignee.is_some() {
