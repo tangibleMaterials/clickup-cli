@@ -1,187 +1,219 @@
-//! Markdown → ClickUp doc block conversion, backed by the [`comrak`] CommonMark
-//! parser.
+//! Markdown → ClickUp comment ops conversion, backed by the [`comrak`]
+//! CommonMark parser.
 //!
 //! ClickUp's v2 comment API accepts two mutually exclusive body shapes:
 //!
 //! - `{ "comment_text": "..." }` — plain text, stored verbatim (markdown is
 //!   NOT rendered, it appears as literal `#`, `**`, etc. in the UI).
-//! - `{ "comment": [ ...blocks... ] }` — an ordered array of "doc blocks" that
-//!   ClickUp renders as rich content (headings, lists, code, quotes, …).
+//! - `{ "comment": [ ...ops... ] }` — an ordered array of "ops" (a
+//!   Quill-delta-style stream) that ClickUp renders as rich content (headings,
+//!   lists, code, quotes, …).
 //!
-//! This module turns a markdown string into that doc block array so callers can
-//! post rich comments.
+//! This module turns a markdown string into that ops array so callers can post
+//! rich comments.
+//!
+//! ## Why ops, not nested blocks
+//!
+//! ClickUp's comment renderer expects a FLAT stream of ops, each an object with
+//! a `text` string and an optional `attributes` map — the same model Quill uses.
+//! It does NOT understand a nested `{ "type": "p", "content": [...] }` tree: it
+//! silently stores such a payload but never renders it, and worse, it derives
+//! the `comment_text` display fallback by concatenating each top-level element's
+//! `text` field. Nested blocks have no top-level `text`, so `comment_text`
+//! becomes `"undefinedundefined…"` (one `undefined` per block) and the UI shows
+//! that garbage instead of the content. Emitting the flat ops stream is the only
+//! shape ClickUp both renders AND derives a correct `comment_text` from.
 //!
 //! Rather than hand-rolling a line-based parser, we hand the string to comrak,
-//! which produces a typed CommonMark AST, then walk that tree and emit blocks.
-//! Using a real parser means we inherit CommonMark's handling of the awkward
-//! cases (nested emphasis, lazy continuation lines, indented content, escapes,
-//! entity references) for free.
+//! which produces a typed CommonMark AST, then walk that tree and emit ops.
 //!
-//! ## Block mapping
+//! ## Ops model
 //!
-//! | CommonMark node        | ClickUp block                         |
-//! |------------------------|---------------------------------------|
-//! | Heading level 1/2/3    | `h1` / `h2` / `h3`                    |
-//! | Heading level 4/5/6    | `h3` (ClickUp has no deeper heading)  |
-//! | Paragraph              | `p`                                   |
-//! | Fenced/indented code   | `code` (+ `attrs.language` when known)|
-//! | Bullet list            | `bullet_list` → `list_item` children  |
-//! | Ordered list           | `ordered_list` → `list_item` children |
-//! | Block quote            | `blockquote`                          |
+//! Text carries INLINE formatting directly on the op:
+//!
+//! - Strong (`**bold**`)  → `{ "text": "…", "attributes": { "bold": true } }`
+//! - Emph (`*italic*`)    → `{ "text": "…", "attributes": { "italic": true } }`
+//! - Code (`` `code` ``)  → `{ "text": "…", "attributes": { "code": true } }`
+//! - Nested strong+emph   → both keys on the same op
+//!
+//! BLOCK formatting is applied Quill-style to the newline that TERMINATES the
+//! line, not to the text itself:
+//!
+//! | CommonMark node        | terminating-newline attributes         |
+//! |------------------------|----------------------------------------|
+//! | Heading level 1/2/3    | `{ "header": 1|2|3 }`                   |
+//! | Heading level 4/5/6    | `{ "header": 3 }` (clamped)             |
+//! | Paragraph              | (none — a plain `{ "text": "\n" }`)     |
+//! | Fenced/indented code   | `{ "code-block": true }` (per line)     |
+//! | Bullet list item       | `{ "list": "bullet" }` (+`indent` when nested) |
+//! | Ordered list item      | `{ "list": "ordered" }` (+`indent` when nested) |
+//! | Block quote line       | `{ "blockquote": true }`                |
 //!
 //! Unsupported blocks (thematic breaks, HTML blocks, tables, …) are skipped.
-//!
-//! ## Inline mapping
-//!
-//! Blocks that carry text (`p`, headings, `list_item`, `blockquote`) emit a
-//! `content` array of text runs, because ClickUp does NOT render raw inline
-//! markdown inside a block's `text` string — it would show the literal `**` /
-//! `*` / `` ` `` characters. Each run is `{ "type": "text", "text": "…" }` with
-//! an optional `marks` array:
-//!
-//! - Strong (`**bold**`)  → `{ "type": "bold" }`
-//! - Emph (`*italic*`)    → `{ "type": "italic" }`
-//! - Code (`` `code` ``)  → `{ "type": "code" }`
-//! - Nested strong+emph   → both marks on the same run
-//!
-//! Marks are emitted in a canonical order (`bold`, `italic`, `code`) regardless
-//! of nesting order, so output is stable. A `SoftBreak` becomes a space and a
-//! hard `LineBreak` becomes a newline within the surrounding text run.
-//!
-//! `code` blocks are the exception: they carry a literal `text` string (no mark
-//! parsing) so the source is preserved byte-for-byte.
+//! A `SoftBreak` becomes a space and a hard `LineBreak` becomes a newline within
+//! the surrounding text op. Code fences carry their content one op per line so
+//! the source is preserved verbatim; the fence language is not representable in
+//! the comment ops model and is dropped.
 
 use comrak::nodes::{AstNode, ListType, NodeValue};
 use comrak::{parse_document, Arena, Options};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
-/// Convert a markdown string into an array of ClickUp doc blocks suitable for
+/// Convert a markdown string into the array of ClickUp comment ops suitable for
 /// the `comment` field of the v2 comment API.
-pub fn to_doc_blocks(markdown: &str) -> Vec<Value> {
+pub fn to_comment_ops(markdown: &str) -> Vec<Value> {
     let arena = Arena::new();
     let root = parse_document(&arena, markdown, &Options::default());
 
-    root.children().filter_map(block_to_value).collect()
+    let mut ops: Vec<Value> = Vec::new();
+    for child in root.children() {
+        emit_block(child, &mut ops);
+    }
+    ops
 }
 
-/// Convert a single block-level AST node into a ClickUp doc block, or `None` for
-/// block types ClickUp has no equivalent for (thematic breaks, HTML, tables…).
-fn block_to_value<'a>(node: &'a AstNode<'a>) -> Option<Value> {
+/// Emit the ops for a single block-level AST node, appending to `out`. Block
+/// types ClickUp has no equivalent for (thematic breaks, HTML, tables…) emit
+/// nothing.
+fn emit_block<'a>(node: &'a AstNode<'a>, out: &mut Vec<Value>) {
     match &node.data.borrow().value {
         NodeValue::Heading(heading) => {
-            let ty = match heading.level {
-                1 => "h1",
-                2 => "h2",
-                // ClickUp only has h1/h2/h3 — clamp deeper headings to h3.
-                _ => "h3",
-            };
-            Some(json!({ "type": ty, "content": inline_content(node) }))
+            emit_runs(&inline_runs(node), out);
+            // ClickUp only has h1/h2/h3 — clamp deeper headings to 3.
+            let level = heading.level.min(3);
+            push_newline(out, [("header", json!(level))]);
         }
 
-        NodeValue::Paragraph => Some(json!({ "type": "p", "content": inline_content(node) })),
+        NodeValue::Paragraph => {
+            emit_runs(&inline_runs(node), out);
+            push_newline(out, []);
+        }
 
         NodeValue::CodeBlock(code) => {
             // comrak stores the code with a trailing newline; drop exactly one so
             // round-tripped source keeps any intentional interior blank lines.
             let literal = code.literal.strip_suffix('\n').unwrap_or(&code.literal);
-            let mut block = json!({ "type": "code", "text": literal });
-            // The info string may be "rust", "rust,ignore", "ruby foo" — the
-            // language is its first whitespace/comma-free token.
-            let language = code
-                .info
-                .split(|c: char| c.is_whitespace() || c == ',')
-                .find(|s| !s.is_empty())
-                .unwrap_or("");
-            if !language.is_empty() {
-                block["attrs"] = json!({ "language": language });
+            // Each source line is its own op terminated by a `code-block`
+            // newline — that is how Quill (and ClickUp) mark a fenced block.
+            for line in literal.split('\n') {
+                push_text(out, line, &[]);
+                push_newline(out, [("code-block", json!(true))]);
             }
-            Some(block)
         }
 
-        NodeValue::List(list) => {
-            let ty = match list.list_type {
-                ListType::Bullet => "bullet_list",
-                ListType::Ordered => "ordered_list",
-            };
-            let children: Vec<Value> = node.children().filter_map(list_item_to_value).collect();
-            Some(json!({ "type": ty, "children": children }))
-        }
+        NodeValue::List(list) => emit_list(node, list.list_type, 0, out),
 
         NodeValue::BlockQuote => {
-            Some(json!({ "type": "blockquote", "content": blockquote_content(node) }))
+            for child in node.children() {
+                if matches!(child.data.borrow().value, NodeValue::Paragraph) {
+                    emit_runs(&inline_runs(child), out);
+                    push_newline(out, [("blockquote", json!(true))]);
+                }
+            }
         }
 
-        _ => None,
+        _ => {}
     }
 }
 
-/// Convert a list `Item` node into a `list_item` block. The item's inline text
-/// becomes its `content`; any nested lists are attached under `children` so the
-/// list hierarchy is preserved.
-fn list_item_to_value<'a>(node: &'a AstNode<'a>) -> Option<Value> {
-    if !matches!(node.data.borrow().value, NodeValue::Item(_)) {
-        return None;
-    }
+/// Emit the ops for a list, recursing into nested lists with a deeper `indent`.
+/// Each item's inline text becomes text ops, terminated by a newline carrying
+/// the list kind (and `indent` once nested); nested sub-lists are emitted
+/// immediately after their parent item's line, mirroring Quill's flat model.
+fn emit_list<'a>(node: &'a AstNode<'a>, list_type: ListType, depth: u64, out: &mut Vec<Value>) {
+    let kind = match list_type {
+        ListType::Bullet => "bullet",
+        ListType::Ordered => "ordered",
+    };
 
-    let mut runs: Vec<Run> = Vec::new();
-    let mut nested: Vec<Value> = Vec::new();
-    let mut first_para = true;
+    for item in node.children() {
+        if !matches!(item.data.borrow().value, NodeValue::Item(_)) {
+            continue;
+        }
 
-    for child in node.children() {
-        match &child.data.borrow().value {
-            NodeValue::Paragraph => {
-                // A multi-paragraph item is rare; separate paragraphs with a
-                // newline so their text does not run together.
-                if !first_para {
-                    push_run(&mut runs, "\n".to_string(), &[]);
+        let mut runs: Vec<Run> = Vec::new();
+        let mut nested: Vec<(&AstNode, ListType)> = Vec::new();
+        let mut first_para = true;
+
+        for child in item.children() {
+            match &child.data.borrow().value {
+                NodeValue::Paragraph => {
+                    // A multi-paragraph item is rare; separate paragraphs with a
+                    // newline so their text does not run together.
+                    if !first_para {
+                        push_run(&mut runs, "\n".to_string(), &[]);
+                    }
+                    first_para = false;
+                    collect_children_inline(child, &[], &mut runs);
                 }
-                first_para = false;
-                collect_children_inline(child, &[], &mut runs);
+                NodeValue::List(nested_list) => nested.push((child, nested_list.list_type)),
+                _ => {}
             }
-            NodeValue::List(_) => {
-                if let Some(block) = block_to_value(child) {
-                    nested.push(block);
-                }
-            }
-            _ => {}
+        }
+
+        emit_runs(&runs, out);
+        let mut attrs: Vec<(&str, Value)> = vec![("list", json!(kind))];
+        if depth > 0 {
+            attrs.push(("indent", json!(depth)));
+        }
+        push_newline(out, attrs);
+
+        for (child, nested_type) in nested {
+            emit_list(child, nested_type, depth + 1, out);
         }
     }
-
-    let mut item = json!({ "type": "list_item", "content": runs_to_content(runs) });
-    if !nested.is_empty() {
-        item["children"] = json!(nested);
-    }
-    Some(item)
-}
-
-/// Flatten a block quote's child paragraphs into one `content` array, joining
-/// separate paragraphs with a newline.
-fn blockquote_content<'a>(node: &'a AstNode<'a>) -> Vec<Value> {
-    let mut runs: Vec<Run> = Vec::new();
-    let mut first_para = true;
-
-    for child in node.children() {
-        if matches!(child.data.borrow().value, NodeValue::Paragraph) {
-            if !first_para {
-                push_run(&mut runs, "\n".to_string(), &[]);
-            }
-            first_para = false;
-            collect_children_inline(child, &[], &mut runs);
-        }
-    }
-
-    runs_to_content(runs)
 }
 
 /// A text run: its string plus the (canonically ordered, deduplicated) marks
 /// that apply to it.
 type Run = (String, Vec<&'static str>);
 
-/// Build the `content` array for a block by walking its inline children.
-fn inline_content<'a>(node: &'a AstNode<'a>) -> Vec<Value> {
+/// Collect the inline text runs of a block node (its content, without the
+/// terminating newline).
+fn inline_runs<'a>(node: &'a AstNode<'a>) -> Vec<Run> {
     let mut runs: Vec<Run> = Vec::new();
     collect_children_inline(node, &[], &mut runs);
-    runs_to_content(runs)
+    runs
+}
+
+/// Emit one text op per run, attaching an `attributes` map for any marks.
+fn emit_runs(runs: &[Run], out: &mut Vec<Value>) {
+    for (text, marks) in runs {
+        push_text(out, text, marks);
+    }
+}
+
+/// Push a `{ "text": text, "attributes"?: {...} }` op. Empty text is dropped so
+/// a run with no characters never produces a stray op.
+fn push_text(out: &mut Vec<Value>, text: &str, marks: &[&'static str]) {
+    if text.is_empty() {
+        return;
+    }
+    let mut op = Map::new();
+    op.insert("text".to_string(), Value::String(text.to_string()));
+    if !marks.is_empty() {
+        let mut attrs = Map::new();
+        for mark in marks {
+            attrs.insert((*mark).to_string(), Value::Bool(true));
+        }
+        op.insert("attributes".to_string(), Value::Object(attrs));
+    }
+    out.push(Value::Object(op));
+}
+
+/// Push a `{ "text": "\n", "attributes"?: {...} }` op that terminates a line and
+/// carries its block-level formatting.
+fn push_newline<'a, I>(out: &mut Vec<Value>, attrs: I)
+where
+    I: IntoIterator<Item = (&'a str, Value)>,
+{
+    let mut op = Map::new();
+    op.insert("text".to_string(), Value::String("\n".to_string()));
+    let attrs: Map<String, Value> = attrs.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+    if !attrs.is_empty() {
+        op.insert("attributes".to_string(), Value::Object(attrs));
+    }
+    out.push(Value::Object(op));
 }
 
 /// Walk every inline child of `node`, appending runs to `out`.
@@ -249,23 +281,4 @@ fn mark_priority(mark: &str) -> u8 {
         "code" => 2,
         _ => 3,
     }
-}
-
-/// Turn accumulated runs into the JSON `content` array. An empty run list still
-/// yields one empty text run so every block reliably carries a `content` array.
-fn runs_to_content(runs: Vec<Run>) -> Vec<Value> {
-    if runs.is_empty() {
-        return vec![json!({ "type": "text", "text": "" })];
-    }
-
-    runs.into_iter()
-        .map(|(text, marks)| {
-            if marks.is_empty() {
-                json!({ "type": "text", "text": text })
-            } else {
-                let marks_json: Vec<Value> = marks.iter().map(|m| json!({ "type": m })).collect();
-                json!({ "type": "text", "text": text, "marks": marks_json })
-            }
-        })
-        .collect()
 }

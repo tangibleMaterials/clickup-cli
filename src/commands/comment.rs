@@ -31,10 +31,10 @@ pub enum CommentCommands {
         /// View ID
         #[arg(long, conflicts_with_all = ["task", "list"])]
         view: Option<String>,
-        /// Comment text (use @path to read from a file, @- for stdin, @@ for a literal leading @). Plain text by default (ClickUp's v2 comment API stores markdown as literal text); pass --markdown to render it as rich ClickUp doc blocks.
+        /// Comment text (use @path to read from a file, @- for stdin, @@ for a literal leading @). Plain text by default (ClickUp's v2 comment API stores markdown as literal text); pass --markdown to render it as rich ClickUp content.
         #[arg(long, value_parser = crate::input::resolve_value_arg)]
         text: String,
-        /// Parse --text as markdown and post it as ClickUp doc blocks (headings, lists, code, quotes) so it renders as rich content instead of literal text.
+        /// Parse --text as markdown and post it as rich ClickUp comment content (headings, lists, code, quotes, bold/italic/inline-code) so it renders as formatted content instead of literal text.
         #[arg(long)]
         markdown: bool,
         /// Assignee user ID (task comments only)
@@ -141,12 +141,17 @@ pub async fn execute(command: CommentCommands, cli: &Cli) -> Result<(), CliError
             assignee,
             notify_all,
         } => {
-            // With --markdown, parse the text into ClickUp doc blocks and send
+            // With --markdown, parse the text into ClickUp comment ops and send
             // them via the `comment` array (rendered rich content). Otherwise
             // send the raw string via `comment_text` (stored verbatim).
+            //
+            // The two shapes are mutually exclusive: `comment_text` is NEVER set
+            // alongside `comment`. ClickUp derives its own `comment_text` display
+            // fallback from the ops, so sending our own would either be ignored
+            // or clobber the rendered content.
             let comment_body = || -> serde_json::Value {
                 if markdown {
-                    serde_json::json!({ "comment": crate::markdown::to_doc_blocks(&text) })
+                    serde_json::json!({ "comment": crate::markdown::to_comment_ops(&text) })
                 } else {
                     serde_json::json!({ "comment_text": text })
                 }

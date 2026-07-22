@@ -14,8 +14,10 @@ fn clickup(dir: &Path, server: &MockServer) -> Command {
     cmd
 }
 
-// With --markdown, the body must use the `comment` doc-block array, not
-// `comment_text`.
+// With --markdown, the body must use the `comment` op array, not
+// `comment_text`. The body is a flat Quill-style op stream: text ops carry
+// inline marks, and each line is terminated by a newline op whose attributes
+// carry the block formatting (header, list, …).
 #[tokio::test]
 async fn test_comment_create_markdown_posts_doc_blocks() {
     let dir = tempfile::TempDir::new().unwrap();
@@ -25,15 +27,14 @@ async fn test_comment_create_markdown_posts_doc_blocks() {
         .and(path_matcher("/v2/list/list-1/comment"))
         .and(body_json(serde_json::json!({
             "comment": [
-                { "type": "h1", "content": [{ "type": "text", "text": "Plan" }] },
-                { "type": "p", "content": [{ "type": "text", "text": "Intro." }] },
-                {
-                    "type": "bullet_list",
-                    "children": [
-                        { "type": "list_item", "content": [{ "type": "text", "text": "Step 1" }] },
-                        { "type": "list_item", "content": [{ "type": "text", "text": "Step 2" }] }
-                    ]
-                }
+                { "text": "Plan" },
+                { "text": "\n", "attributes": { "header": 1 } },
+                { "text": "Intro." },
+                { "text": "\n" },
+                { "text": "Step 1" },
+                { "text": "\n", "attributes": { "list": "bullet" } },
+                { "text": "Step 2" },
+                { "text": "\n", "attributes": { "list": "bullet" } }
             ]
         })))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -57,7 +58,7 @@ async fn test_comment_create_markdown_posts_doc_blocks() {
         .success();
 }
 
-// A task comment with --markdown keeps notify_all alongside the doc blocks.
+// A task comment with --markdown keeps notify_all alongside the comment ops.
 #[tokio::test]
 async fn test_comment_create_markdown_task_keeps_notify_all() {
     let dir = tempfile::TempDir::new().unwrap();
@@ -67,7 +68,8 @@ async fn test_comment_create_markdown_task_keeps_notify_all() {
         .and(path_matcher("/v2/task/abc123/comment"))
         .and(body_json(serde_json::json!({
             "comment": [
-                { "type": "code", "text": "puts 1", "attrs": { "language": "ruby" } }
+                { "text": "puts 1" },
+                { "text": "\n", "attributes": { "code-block": true } }
             ],
             "notify_all": false
         })))

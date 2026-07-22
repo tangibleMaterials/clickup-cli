@@ -1,67 +1,57 @@
-//! Heading conversion: ATX (`#`) and setext (`===`/`---`) headings map to
-//! ClickUp's `h1`/`h2`/`h3`; anything deeper clamps to `h3`.
+//! Heading conversion: ATX (`#`) and setext (`===`/`---`) headings terminate
+//! their line with a `{ "header": 1|2|3 }` newline op; anything deeper clamps to
+//! `header: 3`.
 
+use crate::helpers::nl_header;
 use serde_json::json;
 
 #[test]
 fn atx_headings_map_to_h1_h2_h3() {
-    assert_blocks!(
+    assert_ops!(
         "# One\n\n## Two\n\n### Three",
         json!([
-            { "type": "h1", "content": [{ "type": "text", "text": "One" }] },
-            { "type": "h2", "content": [{ "type": "text", "text": "Two" }] },
-            { "type": "h3", "content": [{ "type": "text", "text": "Three" }] },
+            run!("One"),
+            nl_header(1),
+            run!("Two"),
+            nl_header(2),
+            run!("Three"),
+            nl_header(3),
         ])
     );
 }
 
 #[test]
 fn heading_level_four_clamps_to_h3() {
-    assert_blocks!(
-        "#### Four",
-        json!([{ "type": "h3", "content": [{ "type": "text", "text": "Four" }] }])
-    );
+    assert_ops!("#### Four", json!([run!("Four"), nl_header(3)]));
 }
 
 #[test]
 fn heading_level_six_clamps_to_h3() {
-    assert_blocks!(
-        "###### Six",
-        json!([{ "type": "h3", "content": [{ "type": "text", "text": "Six" }] }])
-    );
+    assert_ops!("###### Six", json!([run!("Six"), nl_header(3)]));
 }
 
 #[test]
 fn heading_with_inline_bold_gets_content_marks() {
-    assert_blocks!(
+    assert_ops!(
         "## Plan for **launch**",
-        json!([{
-            "type": "h2",
-            "content": [
-                make_content_run!("Plan for "),
-                make_content_run!("launch", "bold"),
-            ]
-        }])
+        json!([run!("Plan for "), run!("launch", "bold"), nl_header(2)])
     );
 }
 
 #[test]
 fn hash_without_space_is_paragraph_not_heading() {
     // `#tag` has no space after the hash, so CommonMark treats it as text.
-    assert_blocks!(
+    assert_ops!(
         "#notaheading",
-        json!([{ "type": "p", "content": [{ "type": "text", "text": "#notaheading" }] }])
+        json!([run!("#notaheading"), crate::helpers::nl()])
     );
 }
 
 #[test]
 fn setext_headings_map_to_h1_and_h2() {
-    assert_blocks!(
-        "Title\n=====",
-        json!([{ "type": "h1", "content": [{ "type": "text", "text": "Title" }] }])
-    );
-    assert_blocks!(
+    assert_ops!("Title\n=====", json!([run!("Title"), nl_header(1)]));
+    assert_ops!(
         "Subtitle\n--------",
-        json!([{ "type": "h2", "content": [{ "type": "text", "text": "Subtitle" }] }])
+        json!([run!("Subtitle"), nl_header(2)])
     );
 }

@@ -1,67 +1,69 @@
-//! Fenced and indented code blocks: literal content (no inline parsing) and an
-//! optional `attrs.language` derived from the fence info string.
+//! Fenced and indented code blocks: literal content (no inline parsing), one op
+//! per source line, each line terminated by a `{ "code-block": true }` newline.
+//! The fence language is not representable in the comment ops model and is
+//! dropped.
 
+use crate::helpers::nl_code;
 use serde_json::json;
 
 #[test]
-fn fenced_code_preserves_language_attr() {
-    assert_blocks!(
+fn fenced_code_emits_one_line_per_op() {
+    assert_ops!(
         "```ruby\nputs 1\nputs 2\n```",
-        json!([{
-            "type": "code",
-            "text": "puts 1\nputs 2",
-            "attrs": { "language": "ruby" }
-        }])
+        json!([run!("puts 1"), nl_code(), run!("puts 2"), nl_code()])
     );
 }
 
 #[test]
-fn fenced_code_without_language_omits_attrs() {
-    assert_blocks!(
+fn fenced_code_without_language_is_the_same_shape() {
+    assert_ops!(
         "```\nplain code\n```",
-        json!([{ "type": "code", "text": "plain code" }])
+        json!([run!("plain code"), nl_code()])
     );
 }
 
 #[test]
-fn language_is_first_token_of_info_string() {
-    // Info strings like "rust,ignore" or "js highlight" carry more than the
-    // language; only the leading token is used.
-    assert_blocks!(
+fn language_info_string_is_ignored() {
+    // Info strings like "rust,ignore" carry a language the comment ops model
+    // cannot express; the content is still preserved verbatim.
+    assert_ops!(
         "```rust,ignore\nfn main() {}\n```",
-        json!([{
-            "type": "code",
-            "text": "fn main() {}",
-            "attrs": { "language": "rust" }
-        }])
+        json!([run!("fn main() {}"), nl_code()])
     );
 }
 
 #[test]
 fn code_content_is_literal_and_not_mark_parsed() {
     // Markdown syntax inside a fence must survive verbatim as `text`.
-    assert_blocks!(
+    assert_ops!(
         "```\n**not bold** and `inline`\n```",
-        json!([{ "type": "code", "text": "**not bold** and `inline`" }])
+        json!([run!("**not bold** and `inline`"), nl_code()])
     );
 }
 
 #[test]
 fn multiline_code_preserves_interior_blank_lines() {
-    assert_blocks!(
+    // A blank source line becomes a bare `code-block` newline (no text op).
+    assert_ops!(
         "```python\ndef a():\n    pass\n\ndef b():\n    pass\n```",
-        json!([{
-            "type": "code",
-            "text": "def a():\n    pass\n\ndef b():\n    pass",
-            "attrs": { "language": "python" }
-        }])
+        json!([
+            run!("def a():"),
+            nl_code(),
+            run!("    pass"),
+            nl_code(),
+            nl_code(),
+            run!("def b():"),
+            nl_code(),
+            run!("    pass"),
+            nl_code(),
+        ])
     );
 }
 
 #[test]
-fn indented_code_block_maps_to_code_without_language() {
-    assert_blocks!(
+fn indented_code_block_is_code_too() {
+    assert_ops!(
         "    let x = 1;\n    let y = 2;",
-        json!([{ "type": "code", "text": "let x = 1;\nlet y = 2;" }])
+        json!([run!("let x = 1;"), nl_code(), run!("let y = 2;"), nl_code()])
     );
 }

@@ -172,7 +172,7 @@ clickup-cli task search --status "in progress" --assignee 44106202
 # Comments and collaboration
 clickup-cli comment list --task abc123
 clickup-cli comment create --task abc123 --text "Looking good!"
-# Render markdown as rich ClickUp doc blocks (headings, lists, code, quotes)
+# Render markdown as rich ClickUp content (headings, lists, code, quotes)
 clickup-cli comment create --task abc123 --text "# My Plan
 
 - Step 1

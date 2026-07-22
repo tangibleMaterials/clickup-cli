@@ -1,5 +1,5 @@
-//! Integration test suite for the markdown → ClickUp doc block converter
-//! (`clickup_cli::markdown::to_doc_blocks`).
+//! Integration test suite for the markdown → ClickUp comment ops converter
+//! (`clickup_cli::markdown::to_comment_ops`).
 //!
 //! The suite is split by block type. Shared assertion helpers and macros live
 //! in `markdown/mod.rs`; each `#[path]`-included module below owns one slice of
