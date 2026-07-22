@@ -25,13 +25,13 @@ async fn test_comment_create_markdown_posts_doc_blocks() {
         .and(path_matcher("/v2/list/list-1/comment"))
         .and(body_json(serde_json::json!({
             "comment": [
-                { "type": "h1", "text": "Plan" },
-                { "type": "p", "text": "Intro." },
+                { "type": "h1", "content": [{ "type": "text", "text": "Plan" }] },
+                { "type": "p", "content": [{ "type": "text", "text": "Intro." }] },
                 {
                     "type": "bullet_list",
                     "children": [
-                        { "type": "list_item", "text": "Step 1" },
-                        { "type": "list_item", "text": "Step 2" }
+                        { "type": "list_item", "content": [{ "type": "text", "text": "Step 1" }] },
+                        { "type": "list_item", "content": [{ "type": "text", "text": "Step 2" }] }
                     ]
                 }
             ]

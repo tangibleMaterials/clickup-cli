@@ -11,8 +11,12 @@
 //! post rich comments. It is intentionally a small, dependency-free, line-based
 //! parser covering the common block types — not a full CommonMark implementation.
 //!
-//! Inline formatting (`**bold**`, `*italic*`, `` `code` ``) is left untouched in
-//! the emitted `text` strings; ClickUp renders inline markdown inside block text.
+//! Inline formatting (`**bold**`, `*italic*`, `` `code` ``) is parsed into a
+//! `content` array of text runs with `marks`, because ClickUp does NOT render
+//! raw inline markdown inside a block's `text` string — it would show the literal
+//! `**`/`*`/`` ` `` characters. See [`inline_to_content`]. Blocks that carry
+//! inline formatting (`p`, `h1`/`h2`/`h3`, `list_item`, `blockquote`) therefore
+//! emit `content` instead of `text`; `code` blocks keep a literal `text` string.
 //!
 //! Supported blocks:
 //! - `h1` / `h2` / `h3` — `#`, `##`, `###` prefixes
@@ -70,7 +74,7 @@ pub fn to_doc_blocks(markdown: &str) -> Vec<Value> {
                 2 => "h2",
                 _ => "h3",
             };
-            blocks.push(json!({ "type": ty, "text": text }));
+            blocks.push(json!({ "type": ty, "content": inline_to_content(&text) }));
             i += 1;
             continue;
         }
@@ -89,7 +93,7 @@ pub fn to_doc_blocks(markdown: &str) -> Vec<Value> {
                     None => break,
                 }
             }
-            blocks.push(json!({ "type": "blockquote", "text": quote.join("\n") }));
+            blocks.push(json!({ "type": "blockquote", "content": inline_to_content(&quote.join("\n")) }));
             continue;
         }
 
@@ -141,13 +145,13 @@ pub fn to_doc_blocks(markdown: &str) -> Vec<Value> {
 /// Emit the accumulated paragraph lines as a single `p` block, then clear them.
 fn flush_paragraph(blocks: &mut Vec<Value>, paragraph: &mut Vec<String>) {
     if !paragraph.is_empty() {
-        blocks.push(json!({ "type": "p", "text": paragraph.join("\n") }));
+        blocks.push(json!({ "type": "p", "content": inline_to_content(&paragraph.join("\n")) }));
         paragraph.clear();
     }
 }
 
 fn list_item(text: String) -> Value {
-    json!({ "type": "list_item", "text": text })
+    json!({ "type": "list_item", "content": inline_to_content(&text) })
 }
 
 /// True if the (trimmed-left) line opens or closes a fenced code block.
@@ -207,6 +211,159 @@ fn ordered_item(line: &str) -> Option<String> {
         .map(|rest| rest.trim_start().to_string())
 }
 
+/// Parse a string of inline markdown into a ClickUp `content` array — an ordered
+/// list of text runs, each an object `{ "type": "text", "text": "...", "marks": [...] }`.
+///
+/// Supported inline marks:
+/// - `**bold**` / `__bold__` → `bold`
+/// - `*italic*` / `_italic_` → `italic`
+/// - `***bold+italic***` → `bold` + `italic`
+/// - `` `code` `` → `code` (content is literal — no nested parsing)
+///
+/// Plain text between marks becomes a run with no `marks` key. A string with no
+/// inline formatting at all still yields a single plain text run, keeping the API
+/// shape consistent across every block.
+pub fn inline_to_content(text: &str) -> Vec<Value> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut runs: Vec<(String, Vec<&'static str>)> = Vec::new();
+    parse_inline(&chars, &[], &mut runs);
+
+    if runs.is_empty() {
+        // Empty string (e.g. a bare heading marker) — emit one empty run so the
+        // block always carries a `content` array rather than a missing field.
+        return vec![json!({ "type": "text", "text": "" })];
+    }
+
+    runs.into_iter()
+        .map(|(t, marks)| {
+            if marks.is_empty() {
+                json!({ "type": "text", "text": t })
+            } else {
+                let marks_json: Vec<Value> = marks.iter().map(|m| json!({ "type": m })).collect();
+                json!({ "type": "text", "text": t, "marks": marks_json })
+            }
+        })
+        .collect()
+}
+
+/// Recursive-descent scan of `chars`, appending `(text, marks)` runs to `out`.
+/// `active` is the set of marks inherited from an enclosing span (so nested
+/// spans accumulate their parents' marks).
+fn parse_inline(chars: &[char], active: &[&'static str], out: &mut Vec<(String, Vec<&'static str>)>) {
+    let mut i = 0;
+    let mut buf = String::new();
+
+    'outer: while i < chars.len() {
+        // Inline code — highest precedence, literal content (no nested parsing).
+        if chars[i] == '`' {
+            if let Some(close) = find_char(chars, i + 1, '`') {
+                flush_buf(out, &mut buf, active);
+                let content: String = chars[i + 1..close].iter().collect();
+                let mut marks = active.to_vec();
+                push_mark(&mut marks, "code");
+                out.push((content, marks));
+                i = close + 1;
+                continue 'outer;
+            }
+        }
+
+        // Bold + italic: ***text*** (checked before ** and *).
+        if matches_at(chars, i, &['*', '*', '*']) {
+            if let Some(close) = find_delim(chars, i + 3, &['*', '*', '*']) {
+                flush_buf(out, &mut buf, active);
+                let mut marks = active.to_vec();
+                push_mark(&mut marks, "bold");
+                push_mark(&mut marks, "italic");
+                parse_inline(&chars[i + 3..close], &marks, out);
+                i = close + 3;
+                continue 'outer;
+            }
+        }
+
+        // Bold: **text** or __text__.
+        for delim in [['*', '*'], ['_', '_']] {
+            if matches_at(chars, i, &delim) {
+                if let Some(close) = find_delim(chars, i + 2, &delim) {
+                    flush_buf(out, &mut buf, active);
+                    let mut marks = active.to_vec();
+                    push_mark(&mut marks, "bold");
+                    parse_inline(&chars[i + 2..close], &marks, out);
+                    i = close + 2;
+                    continue 'outer;
+                }
+            }
+        }
+
+        // Italic: *text* or _text_ (single marker, not part of a double).
+        for delim in ['*', '_'] {
+            if chars[i] == delim && chars.get(i + 1) != Some(&delim) {
+                if let Some(close) = find_char(chars, i + 1, delim) {
+                    flush_buf(out, &mut buf, active);
+                    let mut marks = active.to_vec();
+                    push_mark(&mut marks, "italic");
+                    parse_inline(&chars[i + 1..close], &marks, out);
+                    i = close + 1;
+                    continue 'outer;
+                }
+            }
+        }
+
+        // Ordinary character — accumulate into the current plain-text run.
+        buf.push(chars[i]);
+        i += 1;
+    }
+
+    flush_buf(out, &mut buf, active);
+}
+
+/// Push the accumulated `buf` as a run carrying `active` marks, then clear it.
+fn flush_buf(out: &mut Vec<(String, Vec<&'static str>)>, buf: &mut String, active: &[&'static str]) {
+    if !buf.is_empty() {
+        out.push((std::mem::take(buf), active.to_vec()));
+    }
+}
+
+/// Add `mark` to `marks` unless already present (keeps mark sets deduplicated).
+fn push_mark(marks: &mut Vec<&'static str>, mark: &'static str) {
+    if !marks.contains(&mark) {
+        marks.push(mark);
+    }
+}
+
+/// True if `delim` occurs in `chars` starting exactly at index `i`.
+fn matches_at(chars: &[char], i: usize, delim: &[char]) -> bool {
+    i + delim.len() <= chars.len() && chars[i..i + delim.len()] == *delim
+}
+
+/// Index of the next occurrence of the multi-char `delim` at or after `from`.
+fn find_delim(chars: &[char], from: usize, delim: &[char]) -> Option<usize> {
+    let mut j = from;
+    while j + delim.len() <= chars.len() {
+        if chars[j..j + delim.len()] == *delim {
+            return Some(j);
+        }
+        j += 1;
+    }
+    None
+}
+
+/// Index of the next single `marker` at or after `from`, skipping any doubled
+/// occurrence (so a `*` italic scan does not stop on a `**` bold delimiter).
+fn find_char(chars: &[char], from: usize, marker: char) -> Option<usize> {
+    let mut j = from;
+    while j < chars.len() {
+        if chars[j] == marker {
+            if chars.get(j + 1) == Some(&marker) {
+                j += 2; // part of a double marker — skip both
+                continue;
+            }
+            return Some(j);
+        }
+        j += 1;
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,9 +373,9 @@ mod tests {
         assert_eq!(
             to_doc_blocks("# One\n## Two\n### Three"),
             vec![
-                json!({ "type": "h1", "text": "One" }),
-                json!({ "type": "h2", "text": "Two" }),
-                json!({ "type": "h3", "text": "Three" }),
+                json!({ "type": "h1", "content": [{ "type": "text", "text": "One" }] }),
+                json!({ "type": "h2", "content": [{ "type": "text", "text": "Two" }] }),
+                json!({ "type": "h3", "content": [{ "type": "text", "text": "Three" }] }),
             ]
         );
     }
@@ -228,7 +385,10 @@ mod tests {
         // #### has no ClickUp equivalent; #tag has no space — both are text.
         assert_eq!(
             to_doc_blocks("#### Four\n#notaheading"),
-            vec![json!({ "type": "p", "text": "#### Four\n#notaheading" })]
+            vec![json!({
+                "type": "p",
+                "content": [{ "type": "text", "text": "#### Four\n#notaheading" }]
+            })]
         );
     }
 
@@ -237,8 +397,8 @@ mod tests {
         assert_eq!(
             to_doc_blocks("line one\nline two\n\nsecond para"),
             vec![
-                json!({ "type": "p", "text": "line one\nline two" }),
-                json!({ "type": "p", "text": "second para" }),
+                json!({ "type": "p", "content": [{ "type": "text", "text": "line one\nline two" }] }),
+                json!({ "type": "p", "content": [{ "type": "text", "text": "second para" }] }),
             ]
         );
     }
@@ -250,8 +410,8 @@ mod tests {
             vec![json!({
                 "type": "bullet_list",
                 "children": [
-                    { "type": "list_item", "text": "one" },
-                    { "type": "list_item", "text": "two" },
+                    { "type": "list_item", "content": [{ "type": "text", "text": "one" }] },
+                    { "type": "list_item", "content": [{ "type": "text", "text": "two" }] },
                 ]
             })]
         );
@@ -264,9 +424,9 @@ mod tests {
             vec![json!({
                 "type": "ordered_list",
                 "children": [
-                    { "type": "list_item", "text": "first" },
-                    { "type": "list_item", "text": "second" },
-                    { "type": "list_item", "text": "tenth" },
+                    { "type": "list_item", "content": [{ "type": "text", "text": "first" }] },
+                    { "type": "list_item", "content": [{ "type": "text", "text": "second" }] },
+                    { "type": "list_item", "content": [{ "type": "text", "text": "tenth" }] },
                 ]
             })]
         );
@@ -304,39 +464,125 @@ mod tests {
     fn blockquote_merges_consecutive_lines() {
         assert_eq!(
             to_doc_blocks("> quoted\n> more"),
-            vec![json!({ "type": "blockquote", "text": "quoted\nmore" })]
+            vec![json!({
+                "type": "blockquote",
+                "content": [{ "type": "text", "text": "quoted\nmore" }]
+            })]
         );
     }
 
     #[test]
-    fn inline_formatting_is_preserved_verbatim() {
+    fn inline_bold_produces_content_with_bold_mark() {
+        // `**bold**` must become a `content` run with a bold mark, NOT a raw
+        // `text` field containing literal asterisks (ClickUp does not render them).
         assert_eq!(
-            to_doc_blocks("some **bold** and `code` here"),
-            vec![json!({ "type": "p", "text": "some **bold** and `code` here" })]
+            to_doc_blocks("some **bold** here"),
+            vec![json!({
+                "type": "p",
+                "content": [
+                    { "type": "text", "text": "some " },
+                    { "type": "text", "text": "bold", "marks": [{ "type": "bold" }] },
+                    { "type": "text", "text": " here" },
+                ]
+            })]
+        );
+    }
+
+    #[test]
+    fn inline_italic_produces_italic_mark() {
+        assert_eq!(
+            inline_to_content("an *italic* word"),
+            vec![
+                json!({ "type": "text", "text": "an " }),
+                json!({ "type": "text", "text": "italic", "marks": [{ "type": "italic" }] }),
+                json!({ "type": "text", "text": " word" }),
+            ]
+        );
+    }
+
+    #[test]
+    fn inline_code_produces_code_mark() {
+        assert_eq!(
+            inline_to_content("run `cargo test` now"),
+            vec![
+                json!({ "type": "text", "text": "run " }),
+                json!({ "type": "text", "text": "cargo test", "marks": [{ "type": "code" }] }),
+                json!({ "type": "text", "text": " now" }),
+            ]
+        );
+    }
+
+    #[test]
+    fn inline_bold_italic_produces_both_marks() {
+        assert_eq!(
+            inline_to_content("***wow***"),
+            vec![json!({
+                "type": "text",
+                "text": "wow",
+                "marks": [{ "type": "bold" }, { "type": "italic" }]
+            })]
+        );
+    }
+
+    #[test]
+    fn underscore_bold_and_italic_variants() {
+        assert_eq!(
+            inline_to_content("__b__ and _i_"),
+            vec![
+                json!({ "type": "text", "text": "b", "marks": [{ "type": "bold" }] }),
+                json!({ "type": "text", "text": " and " }),
+                json!({ "type": "text", "text": "i", "marks": [{ "type": "italic" }] }),
+            ]
+        );
+    }
+
+    #[test]
+    fn plain_text_yields_single_content_run() {
+        // No inline formatting → a single plain text run, no `marks` key.
+        assert_eq!(
+            inline_to_content("just plain text"),
+            vec![json!({ "type": "text", "text": "just plain text" })]
+        );
+        assert_eq!(
+            to_doc_blocks("just plain text"),
+            vec![json!({
+                "type": "p",
+                "content": [{ "type": "text", "text": "just plain text" }]
+            })]
         );
     }
 
     #[test]
     fn mixed_document_preserves_block_order() {
         let md =
-            "# Plan\n\nIntro para.\n\n- Step 1\n- Step 2\n\n1. First\n\n> note\n\n```js\nok()\n```";
+            "# Plan\n\nIntro **para**.\n\n- Step *1*\n- Step 2\n\n1. First\n\n> note\n\n```js\nok()\n```";
         assert_eq!(
             to_doc_blocks(md),
             vec![
-                json!({ "type": "h1", "text": "Plan" }),
-                json!({ "type": "p", "text": "Intro para." }),
+                json!({ "type": "h1", "content": [{ "type": "text", "text": "Plan" }] }),
+                json!({
+                    "type": "p",
+                    "content": [
+                        { "type": "text", "text": "Intro " },
+                        { "type": "text", "text": "para", "marks": [{ "type": "bold" }] },
+                        { "type": "text", "text": "." },
+                    ]
+                }),
                 json!({
                     "type": "bullet_list",
                     "children": [
-                        { "type": "list_item", "text": "Step 1" },
-                        { "type": "list_item", "text": "Step 2" },
+                        { "type": "list_item", "content": [
+                            { "type": "text", "text": "Step " },
+                            { "type": "text", "text": "1", "marks": [{ "type": "italic" }] },
+                        ] },
+                        { "type": "list_item", "content": [{ "type": "text", "text": "Step 2" }] },
                     ]
                 }),
                 json!({
                     "type": "ordered_list",
-                    "children": [{ "type": "list_item", "text": "First" }]
+                    "children": [{ "type": "list_item", "content": [{ "type": "text", "text": "First" }] }]
                 }),
-                json!({ "type": "blockquote", "text": "note" }),
+                json!({ "type": "blockquote", "content": [{ "type": "text", "text": "note" }] }),
                 json!({ "type": "code", "text": "ok()", "attrs": { "language": "js" } }),
             ]
         );
