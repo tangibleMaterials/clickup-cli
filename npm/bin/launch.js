@@ -27,8 +27,8 @@ module.exports = function launch(name) {
     process.stderr.write(
       `clickup-cli: native binary not found at ${bin}\n` +
         "The postinstall download may have failed or was skipped.\n" +
-        "Reinstall with: npm rebuild @nick.bester/clickup-cli\n" +
-        "Or download manually: https://github.com/nicholasbester/clickup-cli/releases\n"
+        "Reinstall with: npm rebuild @tangiblematerials/clickup-cli\n" +
+        "Or download manually: https://github.com/tangibleMaterials/clickup-cli/releases\n"
     );
     process.exit(1);
   }

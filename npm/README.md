@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://clickup-cli.com/">Documentation</a> · <a href="https://github.com/nicholasbester/clickup-cli">GitHub</a> · <a href="https://clickup-cli.com/commands">Command Reference</a> · <a href="https://clickup-cli.com/mcp">MCP Server</a>
+  <a href="https://clickup-cli.com/">Documentation</a> · <a href="https://github.com/tangibleMaterials/clickup-cli">GitHub</a> · <a href="https://clickup-cli.com/commands">Command Reference</a> · <a href="https://clickup-cli.com/mcp">MCP Server</a>
 </p>
 
 ## Why?
@@ -28,7 +28,7 @@ Reduction:                       ~98%
 ## Install
 
 ```bash
-npm install -g @nick.bester/clickup-cli
+npm install -g @tangiblematerials/clickup-cli
 ```
 
 ## Quick Start
@@ -126,17 +126,15 @@ clickup completions fish > ~/.config/fish/completions/clickup.fish
 
 | Method | Command |
 |--------|---------|
-| **Homebrew** | `brew tap nicholasbester/clickup-cli && brew install clickup-cli` |
-| **Cargo** | `cargo install clickup-cli` |
-| **Binary** | Download from [GitHub Releases](https://github.com/nicholasbester/clickup-cli/releases) |
+| **Binary** | Download from [GitHub Releases](https://github.com/tangibleMaterials/clickup-cli/releases) |
 
 ## Links
 
 - **Documentation:** [clickup-cli.com](https://clickup-cli.com/)
 - **Command Reference:** [clickup-cli.com/commands](https://clickup-cli.com/commands)
 - **MCP Server:** [clickup-cli.com/mcp](https://clickup-cli.com/mcp)
-- **GitHub:** [github.com/nicholasbester/clickup-cli](https://github.com/nicholasbester/clickup-cli)
+- **GitHub:** [github.com/tangibleMaterials/clickup-cli](https://github.com/tangibleMaterials/clickup-cli)
 
 ## License
 
-[Apache-2.0](https://github.com/nicholasbester/clickup-cli/blob/main/LICENSE)
+[Apache-2.0](https://github.com/tangibleMaterials/clickup-cli/blob/main/LICENSE)

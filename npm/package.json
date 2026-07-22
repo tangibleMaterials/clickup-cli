@@ -1,14 +1,14 @@
 {
-  "name": "@nick.bester/clickup-cli",
+  "name": "@tangiblematerials/clickup-cli",
   "version": "0.14.0",
   "description": "CLI for the ClickUp API, optimized for AI agents",
   "license": "Apache-2.0",
   "author": "Nick Bester <1872093+nicholasbester@users.noreply.github.com> (https://github.com/nicholasbester)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nicholasbester/clickup-cli"
+    "url": "https://github.com/tangibleMaterials/clickup-cli"
   },
-  "homepage": "https://clickup-cli.com/",
+  "homepage": "https://github.com/tangibleMaterials/clickup-cli",
   "keywords": [
     "clickup",
     "cli",

@@ -6,7 +6,7 @@ const path = require("path");
 const https = require("https");
 
 const VERSION = require("./package.json").version;
-const REPO = "nicholasbester/clickup-cli";
+const REPO = "tangibleMaterials/clickup-cli";
 
 const PLATFORM_MAP = {
   "darwin-arm64": "clickup-macos-arm64",
@@ -203,7 +203,7 @@ async function main() {
   } catch (err) {
     console.error(`Failed to install clickup-cli: ${err.message}`);
     console.error(
-      "Install manually: https://github.com/nicholasbester/clickup-cli/releases"
+      "Install manually: https://github.com/tangibleMaterials/clickup-cli/releases"
     );
     process.exit(1);
   } finally {
