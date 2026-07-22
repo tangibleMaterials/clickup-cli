@@ -31,9 +31,12 @@ pub enum CommentCommands {
         /// View ID
         #[arg(long, conflicts_with_all = ["task", "list"])]
         view: Option<String>,
-        /// Comment text (use @path to read from a file, @- for stdin, @@ for a literal leading @). Note: ClickUp's v2 comment API does not render markdown; markdown syntax is stored as literal text.
+        /// Comment text (use @path to read from a file, @- for stdin, @@ for a literal leading @). Plain text by default (ClickUp's v2 comment API stores markdown as literal text); pass --markdown to render it as rich ClickUp doc blocks.
         #[arg(long, value_parser = crate::input::resolve_value_arg)]
         text: String,
+        /// Parse --text as markdown and post it as ClickUp doc blocks (headings, lists, code, quotes) so it renders as rich content instead of literal text.
+        #[arg(long)]
+        markdown: bool,
         /// Assignee user ID (task comments only)
         #[arg(long)]
         assignee: Option<i64>,
@@ -134,40 +137,39 @@ pub async fn execute(command: CommentCommands, cli: &Cli) -> Result<(), CliError
             list,
             view,
             text,
+            markdown,
             assignee,
             notify_all,
         } => {
-            let (url, resp) = if let Some(id) = list {
-                let body = serde_json::json!({ "comment_text": text });
-                let r = client
-                    .post(&format!("/v2/list/{}/comment", id), &body)
-                    .await?;
-                (format!("/v2/list/{}/comment", id), r)
+            // With --markdown, parse the text into ClickUp doc blocks and send
+            // them via the `comment` array (rendered rich content). Otherwise
+            // send the raw string via `comment_text` (stored verbatim).
+            let comment_body = || -> serde_json::Value {
+                if markdown {
+                    serde_json::json!({ "comment": crate::markdown::to_doc_blocks(&text) })
+                } else {
+                    serde_json::json!({ "comment_text": text })
+                }
+            };
+
+            let (endpoint, body) = if let Some(id) = list {
+                (format!("/v2/list/{}/comment", id), comment_body())
             } else if let Some(id) = view {
-                let body = serde_json::json!({ "comment_text": text });
-                let r = client
-                    .post(&format!("/v2/view/{}/comment", id), &body)
-                    .await?;
-                (format!("/v2/view/{}/comment", id), r)
+                (format!("/v2/view/{}/comment", id), comment_body())
             } else if let Some(resolved) = git::resolve_task(cli, task.as_deref(), true)? {
-                let mut body = serde_json::json!({
-                    "comment_text": text,
-                    "notify_all": notify_all,
-                });
+                let mut body = comment_body();
+                body["notify_all"] = serde_json::json!(notify_all);
                 if let Some(a) = assignee {
                     body["assignee"] = serde_json::json!(a);
                 }
-                let r = client
-                    .post(&format!("/v2/task/{}/comment", resolved.id), &body)
-                    .await?;
-                (format!("/v2/task/{}/comment", resolved.id), r)
+                (format!("/v2/task/{}/comment", resolved.id), body)
             } else {
                 return Err(CliError::ClientError {
                     message: "One of --task, --list, or --view is required".to_string(),
                     status: 0,
                 });
             };
-            let _ = url;
+            let resp = client.post(&endpoint, &body).await?;
             output.print_single(&resp, COMMENT_FIELDS, "id");
             Ok(())
         }
