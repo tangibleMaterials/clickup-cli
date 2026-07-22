@@ -37,6 +37,10 @@ chrono = { version = "0.4", features = ["serde"] }
 comfy-table = "7"
 clap_complete = "4"
 regex = "1"
+# CommonMark parser exposing a typed AST we walk to emit ClickUp doc blocks.
+# default-features = false drops the CLI/syntax-highlighting stack (clap, syntect,
+# onig, bon, …) — we only need the core parser.
+comrak = { version = "0.54", default-features = false }
 
 [dev-dependencies]
 wiremock = "0.6"
